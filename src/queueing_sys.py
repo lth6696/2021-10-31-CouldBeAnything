@@ -30,7 +30,7 @@ class MarkovChainMonteCarlo(object):
         for i in range(T):
             y = x + st.norm(0, 0.3).rvs()   # 采样值
             u = np.random.uniform()     # 从均匀分布产生u
-            rho = min(1, (rv.pdf(y)*Q(10, y).pmf(61))/(rv.pdf(x)*Q(10, x).pmf(61)))
+            rho = min(1, (rv.pdf(x)*Q(10, x).pmf(61))/(rv.pdf(y)*Q(10, y).pmf(61)))
             print(rho)
             if u < rho:
                 naccept += 1
