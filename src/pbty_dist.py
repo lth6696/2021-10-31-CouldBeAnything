@@ -7,7 +7,8 @@ class DiscreteProbabilityDistributions(object):
     def __init__(self):
         pass
 
-    def geometric_distribution(self, p):
+    @staticmethod
+    def geometric_distribution(p):
         # f(k) = p*(1-p)**(k-1), k>=1, 0<p<=1
         # p - the probability of a single success
         rv = stats.geom(p)
@@ -19,7 +20,13 @@ class ContinuousProbabilityDistributions(object):
     def __init__(self):
         pass
 
-    def exponent_distribution(self):
+    @staticmethod
+    def exponent_distribution():
         # f(x) = exp(-x), x>=0
         rv = stats.expon()
+        return rv
+
+    @staticmethod
+    def erlang_distribution(a):
+        rv = stats.erlang(a)
         return rv
