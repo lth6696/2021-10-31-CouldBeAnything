@@ -17,10 +17,14 @@ def rwka_function():
     RR = [4 for _ in nodes]
     WL = 3
     wavelengths = [i for i in range(WL)]
+    Pw = [[[1 for w in range(WL)] for n in nodes] for m in nodes]
 
     # A dictionary called 'v' is created to contain the referenced variables
     num_ligthpaths = LpVariable.dicts("LPs", (nodes, nodes), lowBound=0, upBound=None, cat=LpInteger)
     num_lps_on_wl = LpVariable.dicts("LPs_on_wl", (nodes, nodes, wavelengths), lowBound=0, upBound=1, cat=LpInteger)
+    num_lps_routed_on_wl = LpVariable.dicts("phy_topo_route",
+                                            (nodes, nodes, wavelengths, nodes, nodes),
+                                            lowBound=0, upBound=1, cat=LpInteger)
 
     # The objective function is added to 'prob' first
     prob += (lpSum(num_ligthpaths[i] for i in nodes))
@@ -47,14 +51,61 @@ def rwka_function():
             )
 
     # On physical route
-    
+    for i in nodes:
+        for j in nodes:
+            for w in wavelengths:
+                for k in nodes:
+                    if k != i and k != j:
+                        prob += (
+                            lpSum([num_lps_routed_on_wl[i][j][w][m][k] for m in nodes]) ==
+                            lpSum([num_lps_routed_on_wl[i][j][w][k][n] for n in nodes]),
+                            "lightpath continuity for {}{}{}{}".format(i, j, w, k)
+                        )
+
+    for i in nodes:
+        for j in nodes:
+            for w in wavelengths:
+                prob += (
+                    lpSum([num_lps_routed_on_wl[i][j][w][m][j] for m in nodes]) == num_lps_on_wl[i][j][w],
+                    "incoming lightpath equal to total lightpaths on {}{}{}".format(i, j, w)
+                )
+                prob += (
+                    lpSum([num_lps_routed_on_wl[i][j][w][i][n] for n in nodes]) == num_lps_on_wl[i][j][w],
+                    "outgoing lightpath equal to total lightpaths on {}{}{}".format(i, j, w)
+                )
+
+    for i in nodes:
+        for j in nodes:
+            for w in wavelengths:
+                prob += (
+                    lpSum([num_lps_routed_on_wl[i][j][w][m][i] for m in nodes]) == 0,
+                    "incoming lightpath is 0 on {}{}{}".format(i, j, w)
+                )
+                prob += (
+                    lpSum([num_lps_routed_on_wl[i][j][w][j][n] for n in nodes]) == 0,
+                    "outgoing lightpath is 0 on {}{}{}".format(i, j, w)
+                )
+
+    for w in wavelengths:
+        for m in nodes:
+            for n in nodes:
+                prob += (
+                    lpSum([num_lps_routed_on_wl[i][j][w][m][n] for i in nodes for j in nodes]) <= Pw[m][n][w],
+                    "one fiber use one lightpath {}{}{}".format(w, m, n)
+                )
+
+    # On traffic bandwidth allocation
+
 
     # The problem is solved using PuLP's choice of Solver
     prob.solve()
 
     print("Status:", LpStatus[prob.status])
-    # for v in prob.variables():
-    #     print(v.name, "=", v.varValue)
+    for v in prob.variables():
+        print(v.name, "=", v.varValue)
+
+def generate_traffic_matrix():
+    pass
 
 
 if __name__ == '__main__':
