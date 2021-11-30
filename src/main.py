@@ -3,7 +3,6 @@ The RWKA model for the PuLP modeller
 
 Authors: LTH6696 2021
 """
-import numpy as np
 from pulp import *
 
 
@@ -11,39 +10,51 @@ def rwka_function():
     prob = LpProblem("RWKA", LpMaximize)
 
     # Creates a list of all nodes
-    vars = generate_variables(6)
+    nodes = [i for i in range(6)]
 
-    # vars = LpVariable(name="LigthPaths", lowBound=0, upBound=None, cat=LpInteger)
-    v = LpVariable.dicts("Ligthpaths", vars, 0)
+    # Initialise some constants
+    TR = [4 for _ in nodes]
+    RR = [4 for _ in nodes]
+    WL = 3
+    wavelengths = [i for i in range(WL)]
+
+    # A dictionary called 'v' is created to contain the referenced variables
+    num_ligthpaths = LpVariable.dicts("LPs", (nodes, nodes), lowBound=0, upBound=None, cat=LpInteger)
+    num_lps_on_wl = LpVariable.dicts("LPs_on_wl", (nodes, nodes, wavelengths), lowBound=0, upBound=1, cat=LpInteger)
 
     # The objective function is added to 'prob' first
-    prob += (lpSum(v[i] for i in vars))
+    prob += (lpSum(num_ligthpaths[i] for i in nodes))
 
     # The follow constraints are entered
-    prob += (lpSum())
+    # On virtual-topology
+    for i in nodes:
+        prob += (
+            lpSum([num_ligthpaths[i][j] for j in nodes]) <= TR[i],
+            "constraint of transmitters {}".format(i)
+        )
+
+    for j in nodes:
+        prob += (
+            lpSum([num_ligthpaths[i][j] for i in nodes]) <= RR[j],
+            "constraint of receivers {}".format(j)
+        )
+
+    for i in nodes:
+        for j in nodes:
+            prob += (
+                lpSum([num_lps_on_wl[i][j][w] for w in wavelengths]) == num_ligthpaths[i][j],
+                "constrain of wavelength {}{}".format(i, j)
+            )
+
+    # On physical route
+    
 
     # The problem is solved using PuLP's choice of Solver
     prob.solve()
 
     print("Status:", LpStatus[prob.status])
-    for v in prob.variables():
-        print(v.name, "=", v.varValue)
-
-def generate_variables(nodes):
-    var = ['{}{}'.format(i, j) for i in range(nodes) for j in range(nodes)]
-    return var
-
-def generate_network_topology(nodes=None, conn_matrix=None):
-    if nodes is None:
-        nodes = 6
-    if conn_matrix is None:
-        conn_matrix = np.matrix('0 1 0 1 0 0; '
-                                '1 0 1 1 0 0; '
-                                '0 1 0 0 1 1; '
-                                '1 1 0 0 1 0; '
-                                '0 0 1 1 0 1; '
-                                '0 0 1 0 1 0')
-    return (nodes, conn_matrix)
+    # for v in prob.variables():
+    #     print(v.name, "=", v.varValue)
 
 
 if __name__ == '__main__':
