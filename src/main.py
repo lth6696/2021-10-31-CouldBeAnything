@@ -17,7 +17,7 @@ def rwka_function():
     # Creates a set of traffic matrix
     traffic_matrix = generate_traffic_matrix(len(nodes))
 
-    # Initialise some constants
+    # Initialise some inputs
     TR = [4 for _ in nodes]
     RR = [4 for _ in nodes]
     WL = 3
