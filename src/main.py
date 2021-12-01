@@ -4,6 +4,7 @@ The RWKA model for the PuLP modeller
 Authors: LTH6696 2021
 """
 import numpy as np
+import pandas as pd
 from pulp import *
 
 
@@ -13,12 +14,18 @@ def rwka_function():
     # Creates a list of all nodes
     nodes = [i for i in range(6)]
 
+    # Creates a set of traffic matrix
+    traffic_matrix = generate_traffic_matrix(len(nodes))
+
     # Initialise some constants
     TR = [4 for _ in nodes]
     RR = [4 for _ in nodes]
     WL = 3
     wavelengths = [i for i in range(WL)]
     Pw = [[[1 for w in range(WL)] for n in nodes] for m in nodes]
+    y = list(traffic_matrix.keys())
+    C = 48
+    t = [t for yi in y for s in nodes for d in nodes for t in range(traffic_matrix[yi][s][d])]
 
     # A dictionary called 'v' is created to contain the referenced variables
     num_ligthpaths = LpVariable.dicts("LPs", (nodes, nodes), lowBound=0, upBound=None, cat=LpInteger)
@@ -26,6 +33,15 @@ def rwka_function():
     num_lps_routed_on_wl = LpVariable.dicts("phy_topo_route",
                                             (nodes, nodes, wavelengths, nodes, nodes),
                                             lowBound=0, upBound=1, cat=LpInteger)
+    traffic_request_data = LpVariable.dicts('DataBwOneReq',
+                                            (y, nodes, nodes, t, nodes, nodes),
+                                            lowBound=0, upBound=1, cat=LpInteger)
+    print(pd.DataFrame(traffic_matrix))
+    print(t)
+    print(pd.DataFrame(traffic_request_data[1][0][2]))
+    traffic_request_key = LpVariable.dicts('KeyBwOneReq',
+                                           (y, nodes, nodes, t, nodes, nodes),
+                                           lowBound=0, upBound=1, cat=LpInteger)
 
     # The objective function is added to 'prob' first
     prob += (lpSum(num_ligthpaths[i] for i in nodes))
@@ -96,24 +112,41 @@ def rwka_function():
                 )
 
     # On traffic bandwidth allocation
+    for i in nodes:
+        for j in nodes:
+            prob += (
+                lpSum(
+                    [yi * lpSum([traffic_request_data[s][d][yi][i][j] for s in nodes for d in nodes]) for yi in y]
+                ) <= num_ligthpaths[i][j] * C,
+                "link bandwidth constraint {}{}".format(i, j)
+            )
+
+    # for s in nodes:
+    #     for d in nodes:
+    #         for yi in y:
+    #             for t in range(traffic_matrix[yi][s][d]):
+
 
 
     # The problem is solved using PuLP's choice of Solver
     prob.solve()
 
-    print("Status:", LpStatus[prob.status])
-    for v in prob.variables():
-        print(v.name, "=", v.varValue)
+    # print("Status:", LpStatus[prob.status])
+    # for v in prob.variables():
+    #     print(v.name, "=", v.varValue)
 
 
 def generate_traffic_matrix(nodes):
-    security_level = ['1', '3', '12', '48']
+    security_level = [1, 3, 12, 48]
     traffic_matrix = {}
     for l in security_level:
-        # num_conn_req = np.random
-        traffic_matrix[l] = [[1 for i in range(nodes)] for j in range(nodes)]
+        traffic_matrix[l] = [[np.random.randint(0, 10) for i in range(nodes)] for j in range(nodes)]
+        for i in range(nodes):
+            for j in range(nodes):
+                if i == j:
+                    traffic_matrix[l][i][j] = 0
+    return traffic_matrix
 
 
 if __name__ == '__main__':
-    # rwka_function()
-    generate_traffic_matrix(6)
+    rwka_function()
