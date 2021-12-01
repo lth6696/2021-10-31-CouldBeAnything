@@ -3,6 +3,7 @@ The RWKA model for the PuLP modeller
 
 Authors: LTH6696 2021
 """
+import numpy as np
 from pulp import *
 
 
@@ -104,9 +105,15 @@ def rwka_function():
     for v in prob.variables():
         print(v.name, "=", v.varValue)
 
-def generate_traffic_matrix():
-    pass
+
+def generate_traffic_matrix(nodes):
+    security_level = ['1', '3', '12', '48']
+    traffic_matrix = {}
+    for l in security_level:
+        # num_conn_req = np.random
+        traffic_matrix[l] = [[1 for i in range(nodes)] for j in range(nodes)]
 
 
 if __name__ == '__main__':
-    rwka_function()
+    # rwka_function()
+    generate_traffic_matrix(6)
