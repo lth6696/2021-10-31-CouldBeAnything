@@ -3,6 +3,8 @@ The RWKA model for the PuLP modeller
 
 Authors: LTH6696 2021
 """
+import random
+
 import numpy as np
 import pandas as pd
 from pulp import *
@@ -25,7 +27,8 @@ def rwka_function():
     Pw = [[[1 for w in range(WL)] for n in nodes] for m in nodes]
     y = list(traffic_matrix.keys())
     C = 48
-    t = [t for yi in y for s in nodes for d in nodes for t in range(traffic_matrix[yi][s][d])]
+    # t = [t for yi in y for s in nodes for d in nodes for t in range(traffic_matrix[yi][s][d])]
+    t = [i for i in range(11)]
 
     # A dictionary called 'v' is created to contain the referenced variables
     num_ligthpaths = LpVariable.dicts("LPs", (nodes, nodes), lowBound=0, upBound=None, cat=LpInteger)
@@ -36,15 +39,19 @@ def rwka_function():
     traffic_request_data = LpVariable.dicts('DataBwOneReq',
                                             (y, nodes, nodes, t, nodes, nodes),
                                             lowBound=0, upBound=1, cat=LpInteger)
-    print(pd.DataFrame(traffic_matrix))
-    print(t)
-    print(pd.DataFrame(traffic_request_data[1][0][2]))
+
     traffic_request_key = LpVariable.dicts('KeyBwOneReq',
                                            (y, nodes, nodes, t, nodes, nodes),
                                            lowBound=0, upBound=1, cat=LpInteger)
+    successed_routed = LpVariable.dicts("SuccessRoute",
+                                        (y, t, nodes, nodes),
+                                        lowBound=0, upBound=1, cat=LpInteger)
 
     # The objective function is added to 'prob' first
-    prob += (lpSum(num_ligthpaths[i] for i in nodes))
+    # prob += (lpSum(num_ligthpaths[i] for i in nodes))
+    prob += (
+        lpSum([yi * successed_routed[yi][ti][s][d] for yi in y for s in nodes for d in nodes for ti in range(traffic_matrix[yi][s][d])])
+    )
 
     # The follow constraints are entered
     # On virtual-topology
@@ -116,15 +123,43 @@ def rwka_function():
         for j in nodes:
             prob += (
                 lpSum(
-                    [yi * lpSum([traffic_request_data[s][d][yi][i][j] for s in nodes for d in nodes]) for yi in y]
+                    [yi * lpSum([traffic_request_data[yi][s][d][t][i][j] for s in nodes for d in nodes for t in range(traffic_matrix[yi][s][d])]) for yi in y]
                 ) <= num_ligthpaths[i][j] * C,
                 "link bandwidth constraint {}{}".format(i, j)
             )
 
-    # for s in nodes:
-    #     for d in nodes:
-    #         for yi in y:
-    #             for t in range(traffic_matrix[yi][s][d]):
+    for s in nodes:
+        for d in nodes:
+            for yi in y:
+                for ti in range(traffic_matrix[yi][s][d]):
+                    prob += (
+                        lpSum([traffic_request_data[yi][s][d][ti][i][d] for i in nodes]) == successed_routed[yi][ti][s][d]
+                    )
+
+    for s in nodes:
+        for d in nodes:
+            for yi in y:
+                for ti in range(traffic_matrix[yi][s][d]):
+                    prob += (
+                        lpSum([traffic_request_data[yi][s][d][ti][s][j] for j in nodes]) == successed_routed[yi][ti][s][d]
+                    )
+
+                    prob += (
+                        lpSum([traffic_request_data[yi][s][d][ti][i][s] for i in nodes]) == 0
+                    )
+
+                    prob += (
+                        lpSum([traffic_request_data[yi][s][d][ti][d][j] for j in nodes]) == 0
+                    )
+
+    for s in nodes:
+        for d in nodes:
+            for yi in y:
+                for ti in range(traffic_matrix[yi][s][d]):
+                    for k in nodes:
+                        if k != s and k != d:
+                            prob += (lpSum([traffic_request_data[yi][s][d][ti][i][k] for i in nodes]) ==
+                                     lpSum([traffic_request_data[yi][s][d][ti][k][j] for j in nodes]))
 
 
 
@@ -136,17 +171,25 @@ def rwka_function():
     #     print(v.name, "=", v.varValue)
 
 
-def generate_traffic_matrix(nodes):
-    security_level = [1, 3, 12, 48]
-    traffic_matrix = {}
-    for l in security_level:
-        traffic_matrix[l] = [[np.random.randint(0, 10) for i in range(nodes)] for j in range(nodes)]
-        for i in range(nodes):
-            for j in range(nodes):
-                if i == j:
-                    traffic_matrix[l][i][j] = 0
+def generate_traffic_matrix(nodes, num_req):
+    traffic_matrix = [[[] for _ in range(nodes)] for _ in range(nodes)]
+    for i in range(num_req):
+        bw_key = random.randint(0, 10)
+        bw_data = random.randint(0, 10)
+        req = (bw_key, bw_data)
+        row = random.randint(0, nodes-1)
+        col = random.randint(0, nodes-1)
+        while row == col:
+            col = random.randint(0, nodes - 1)
+        traffic_matrix[row][col].append(req)
     return traffic_matrix
+
+def cal_traffic_mat_req_num(traffic_matrix):
+    res = [[len(j) for j in i] for i in traffic_matrix]
+    return res
 
 
 if __name__ == '__main__':
-    rwka_function()
+    traffic_matrix = generate_traffic_matrix(6, 200)
+    res = cal_traffic_mat_req_num(traffic_matrix)
+    print(pd.DataFrame(res))
