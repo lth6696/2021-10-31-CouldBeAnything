@@ -11,6 +11,7 @@ from pulp import *
 
 
 def rwka_function():
+    global S
     prob = LpProblem("BD", LpMaximize)
 
     # Creates a list of all nodes
@@ -24,137 +25,57 @@ def rwka_function():
     traffic_mat_num = cal_traffic_mat_req_num(traffic_matrix)
 
     # Inputs
-    K = 10 * adj_matrix
-    T = 10 * adj_matrix
+    ReservedKeyBw = 10 * adj_matrix
+    ReservedDataBw = 10 * adj_matrix
 
     # Variables
+    # K indicates whether the key bandwidth is successfully allocated.
+    K = []      # list structure, K[src][dst][req][i][j]
+    for s in nodes:
+        temp_src = []
+        for d in nodes:
+            temp_dst = []
+            for n in range(traffic_mat_num[s][d]):
+                temp_req = []
+                for i in nodes:
+                    temp_i = []
+                    for j in nodes:
+                        if adj_matrix[i][j]:
+                            temp_i.append(LpVariable("KeyBwSucAlloc_{}_{}_{}_{}_{}".format(s, d, n, i, j),
+                                                     lowBound=0,
+                                                     upBound=1,
+                                                     cat=LpInteger))
+                    temp_req.append(temp_i)
+                temp_dst.append(temp_req)
+            temp_src.append(temp_dst)
+        K.append(temp_src)
+
+    # S indicates whether the request is successfully allocated.
+    S = []      # list structure, S[src][dst][req], the number of var(s) is equal to the number of req(s).
+    for s in nodes:
+        temp_src = []
+        for d in nodes:
+            temp_dst = []
+            for n in range(traffic_mat_num[s][d]):
+                temp_dst.append(LpVariable("SuccessAllocate_{}_{}_{}".format(s, d, n),
+                                           lowBound=0, upBound=1))
+            temp_src.append(temp_dst)
+        S.append(temp_src)
+
+    # The objective function is added to 'prob' first
+    prob += (
+        lpSum([S[s][d][n] for s in nodes for d in nodes for n in range(traffic_mat_num[s][d])])
+    )
+
+    # The follow constraints are entered
     for s in nodes:
         for d in nodes:
-            n = [i for i in range(traffic_mat_num[s][d])]
-            exec(
-                "K{}{} = LpVariable.dicts('K{}{}', (n, nodes, nodes), lowBound=0, cat=LpInteger)".format(s, d, s, d)
-            )
-
-    # traffic_request_key = LpVariable.dicts('KeyBwOneReq',
-    #                                        (y, nodes, nodes, t, nodes, nodes),
-    #                                        lowBound=0, upBound=1, cat=LpInteger)
-    # successed_routed = LpVariable.dicts("SuccessRoute",
-    #                                     (y, t, nodes, nodes),
-    #                                     lowBound=0, upBound=1, cat=LpInteger)
-    #
-    # # The objective function is added to 'prob' first
-    # # prob += (lpSum(num_ligthpaths[i] for i in nodes))
-    # prob += (
-    #     lpSum([yi * successed_routed[yi][ti][s][d] for yi in y for s in nodes for d in nodes for ti in range(traffic_matrix[yi][s][d])])
-    # )
-    #
-    # # The follow constraints are entered
-    # # On virtual-topology
-    # for i in nodes:
-    #     prob += (
-    #         lpSum([num_ligthpaths[i][j] for j in nodes]) <= TR[i],
-    #         "constraint of transmitters {}".format(i)
-    #     )
-    #
-    # for j in nodes:
-    #     prob += (
-    #         lpSum([num_ligthpaths[i][j] for i in nodes]) <= RR[j],
-    #         "constraint of receivers {}".format(j)
-    #     )
-    #
-    # for i in nodes:
-    #     for j in nodes:
-    #         prob += (
-    #             lpSum([num_lps_on_wl[i][j][w] for w in wavelengths]) == num_ligthpaths[i][j],
-    #             "constrain of wavelength {}{}".format(i, j)
-    #         )
-    #
-    # # On physical route
-    # for i in nodes:
-    #     for j in nodes:
-    #         for w in wavelengths:
-    #             for k in nodes:
-    #                 if k != i and k != j:
-    #                     prob += (
-    #                         lpSum([num_lps_routed_on_wl[i][j][w][m][k] for m in nodes]) ==
-    #                         lpSum([num_lps_routed_on_wl[i][j][w][k][n] for n in nodes]),
-    #                         "lightpath continuity for {}{}{}{}".format(i, j, w, k)
-    #                     )
-    #
-    # for i in nodes:
-    #     for j in nodes:
-    #         for w in wavelengths:
-    #             prob += (
-    #                 lpSum([num_lps_routed_on_wl[i][j][w][m][j] for m in nodes]) == num_lps_on_wl[i][j][w],
-    #                 "incoming lightpath equal to total lightpaths on {}{}{}".format(i, j, w)
-    #             )
-    #             prob += (
-    #                 lpSum([num_lps_routed_on_wl[i][j][w][i][n] for n in nodes]) == num_lps_on_wl[i][j][w],
-    #                 "outgoing lightpath equal to total lightpaths on {}{}{}".format(i, j, w)
-    #             )
-    #
-    # for i in nodes:
-    #     for j in nodes:
-    #         for w in wavelengths:
-    #             prob += (
-    #                 lpSum([num_lps_routed_on_wl[i][j][w][m][i] for m in nodes]) == 0,
-    #                 "incoming lightpath is 0 on {}{}{}".format(i, j, w)
-    #             )
-    #             prob += (
-    #                 lpSum([num_lps_routed_on_wl[i][j][w][j][n] for n in nodes]) == 0,
-    #                 "outgoing lightpath is 0 on {}{}{}".format(i, j, w)
-    #             )
-    #
-    # for w in wavelengths:
-    #     for m in nodes:
-    #         for n in nodes:
-    #             prob += (
-    #                 lpSum([num_lps_routed_on_wl[i][j][w][m][n] for i in nodes for j in nodes]) <= Pw[m][n][w],
-    #                 "one fiber use one lightpath {}{}{}".format(w, m, n)
-    #             )
-    #
-    # # On traffic bandwidth allocation
-    # for i in nodes:
-    #     for j in nodes:
-    #         prob += (
-    #             lpSum(
-    #                 [yi * lpSum([traffic_request_data[yi][s][d][t][i][j] for s in nodes for d in nodes for t in range(traffic_matrix[yi][s][d])]) for yi in y]
-    #             ) <= num_ligthpaths[i][j] * C,
-    #             "link bandwidth constraint {}{}".format(i, j)
-    #         )
-    #
-    # for s in nodes:
-    #     for d in nodes:
-    #         for yi in y:
-    #             for ti in range(traffic_matrix[yi][s][d]):
-    #                 prob += (
-    #                     lpSum([traffic_request_data[yi][s][d][ti][i][d] for i in nodes]) == successed_routed[yi][ti][s][d]
-    #                 )
-    #
-    # for s in nodes:
-    #     for d in nodes:
-    #         for yi in y:
-    #             for ti in range(traffic_matrix[yi][s][d]):
-    #                 prob += (
-    #                     lpSum([traffic_request_data[yi][s][d][ti][s][j] for j in nodes]) == successed_routed[yi][ti][s][d]
-    #                 )
-    #
-    #                 prob += (
-    #                     lpSum([traffic_request_data[yi][s][d][ti][i][s] for i in nodes]) == 0
-    #                 )
-    #
-    #                 prob += (
-    #                     lpSum([traffic_request_data[yi][s][d][ti][d][j] for j in nodes]) == 0
-    #                 )
-    #
-    # for s in nodes:
-    #     for d in nodes:
-    #         for yi in y:
-    #             for ti in range(traffic_matrix[yi][s][d]):
-    #                 for k in nodes:
-    #                     if k != s and k != d:
-    #                         prob += (lpSum([traffic_request_data[yi][s][d][ti][i][k] for i in nodes]) ==
-    #                                  lpSum([traffic_request_data[yi][s][d][ti][k][j] for j in nodes]))
+            if traffic_mat_num[s][d]:
+                for n in range(traffic_mat_num[s][d]):
+                    val = lpSum(j for i in K[s][d][n] for j in i)
+                    prob += (
+                        val == S[s][d][n]
+                    )
 
 
     # The problem is solved using PuLP's choice of Solver
