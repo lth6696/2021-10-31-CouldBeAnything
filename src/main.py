@@ -45,6 +45,8 @@ def rwka_function():
                                                      lowBound=0,
                                                      upBound=1,
                                                      cat=LpInteger))
+                        else:
+                            temp_i.append(0)
                     temp_req.append(temp_i)
                 temp_dst.append(temp_req)
             temp_src.append(temp_dst)
@@ -68,15 +70,34 @@ def rwka_function():
     )
 
     # The follow constraints are entered
+    # constraint of key bandwidth successfully allocated
     for s in nodes:
         for d in nodes:
             if traffic_mat_num[s][d]:
                 for n in range(traffic_mat_num[s][d]):
-                    val = lpSum(j for i in K[s][d][n] for j in i)
+                    # Here we can limit the number of hops.
                     prob += (
-                        val == S[s][d][n]
+                        lpSum(K[s][d][n][i][j] for i in nodes for j in nodes if adj_matrix[i][j]) == S[s][d][n]
                     )
 
+    # maximum key bandwidth constraint
+    for i in nodes:
+        for j in nodes:
+            if adj_matrix[i][j]:
+                prob += (
+                    lpSum([
+                        lpSum([K[s][d][n][i][j] * traffic_matrix[s][d][n][0] for n in range(traffic_mat_num[s][d])]) for s in nodes for d in nodes
+                    ]) <= ReservedKeyBw[i][j]
+                )
+
+    # continuous constraint
+    for s in nodes:
+        for d in nodes:
+            for n in range(traffic_mat_num[s][d]):
+                for k in nodes:
+                    prob += (
+                        lpSum([K[s][d][n][i][k] for i in nodes if ])
+                    )
 
     # The problem is solved using PuLP's choice of Solver
     prob.solve()
