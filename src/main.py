@@ -4,14 +4,13 @@ The RWKA model for the PuLP modeller
 Authors: LTH6696 2021
 """
 import random
+import logging
+import logging.config
 
-import numpy as np
-import pandas as pd
 from pulp import *
 
 
 def rwka_function():
-    global S
     prob = LpProblem("BD", LpMaximize)
 
     # Creates a list of all nodes
@@ -21,95 +20,172 @@ def rwka_function():
     adj_matrix = generate_adj_matrix(len(nodes))
 
     # Creates traffic matrix
-    traffic_matrix = generate_traffic_matrix(len(nodes), 10)
-    traffic_mat_num = cal_traffic_mat_req_num(traffic_matrix)
+    # traffic_matrix = generate_traffic_matrix(len(nodes), 10)
+    # traffic_mat_num = cal_traffic_mat_req_num(traffic_matrix)
+    traffic_matrix = generate_traffic_matrix_v2(len(nodes))
 
     # Inputs
-    ReservedKeyBw = 10 * adj_matrix
-    ReservedDataBw = 10 * adj_matrix
+    ReservedKeyBw = [[4*j for j in i] for i in adj_matrix]
+    ReservedDataBw = [[8*j for j in i] for i in adj_matrix]
 
     # Variables
-    # K indicates whether the key bandwidth is successfully allocated.
-    K = []      # list structure, K[src][dst][req][i][j]
+    # K indicates whether the key resource is successfully allocated.
+    K = []  # list structure, K[src][dst][i][j]
     for s in nodes:
         temp_src = []
         for d in nodes:
             temp_dst = []
-            for n in range(traffic_mat_num[s][d]):
-                temp_req = []
-                for i in nodes:
-                    temp_i = []
-                    for j in nodes:
-                        if adj_matrix[i][j]:
-                            temp_i.append(LpVariable("KeyBwSucAlloc_{}_{}_{}_{}_{}".format(s, d, n, i, j),
-                                                     lowBound=0,
-                                                     upBound=1,
-                                                     cat=LpInteger))
-                        else:
-                            temp_i.append(0)
-                    temp_req.append(temp_i)
-                temp_dst.append(temp_req)
+            for i in nodes:
+                temp_i = []
+                for j in nodes:
+                    if adj_matrix[i][j]:
+                        temp_i.append(LpVariable("KeyBwSucAlloc_{}_{}_{}_{}".format(s, d, i, j),
+                                                 lowBound=0,
+                                                 cat=LpInteger))
+                    else:
+                        temp_i.append(0)
+                temp_dst.append(temp_i)
             temp_src.append(temp_dst)
         K.append(temp_src)
 
-    # S indicates whether the request is successfully allocated.
-    S = []      # list structure, S[src][dst][req], the number of var(s) is equal to the number of req(s).
+    # T indicates whether the data resource is successfully allocated.
+    T = []  # list structure, T[src][dst][i][j]
     for s in nodes:
         temp_src = []
         for d in nodes:
             temp_dst = []
-            for n in range(traffic_mat_num[s][d]):
-                temp_dst.append(LpVariable("SuccessAllocate_{}_{}_{}".format(s, d, n),
-                                           lowBound=0, upBound=1))
+            for i in nodes:
+                temp_i = []
+                for j in nodes:
+                    if adj_matrix[i][j]:
+                        temp_i.append(LpVariable("DataBwSucAlloc_{}_{}_{}_{}".format(s, d, i, j),
+                                                 lowBound=0,
+                                                 cat=LpInteger))
+                    else:
+                        temp_i.append(0)
+                temp_dst.append(temp_i)
             temp_src.append(temp_dst)
-        S.append(temp_src)
+        T.append(temp_src)
+
+    # ST indicates whether the request for data res is successfully allocated.
+    ST = []  # list structure, S[src][dst].
+    for s in nodes:
+        temp_src = []
+        for d in nodes:
+            temp_src.append(LpVariable("DataSucAllo_{}_{}".format(s, d),
+                                       lowBound=0, cat=LpInteger))
+        ST.append(temp_src)
+
+    # SK indicates whether the request for key res is successfully allocated.
+    SK = []  # list structure, S[src][dst].
+    for s in nodes:
+        temp_src = []
+        for d in nodes:
+            temp_src.append(LpVariable("KeySucAllo_{}_{}".format(s, d),
+                                       lowBound=0, cat=LpInteger))
+        SK.append(temp_src)
 
     # The objective function is added to 'prob' first
     prob += (
-        lpSum([S[s][d][n] for s in nodes for d in nodes for n in range(traffic_mat_num[s][d])])
+        lpSum([ST[s][d]+SK[s][d] for s in nodes for d in nodes])
     )
 
     # The follow constraints are entered
-    # constraint of key bandwidth successfully allocated
+    # Data Res
+    # continuous constraint
     for s in nodes:
         for d in nodes:
-            if traffic_mat_num[s][d]:
-                for n in range(traffic_mat_num[s][d]):
-                    # Here we can limit the number of hops.
-                    prob += (
-                        lpSum(K[s][d][n][i][j] for i in nodes for j in nodes if adj_matrix[i][j]) == S[s][d][n]
-                    )
+            # Here we can limit the number of hops.
+            prob += (
+                lpSum([T[s][d][s][j] for j in nodes if adj_matrix[s][j]]) == ST[s][d]
+            )
+            prob += (
+                lpSum([T[s][d][i][d] for i in nodes if adj_matrix[i][d]]) == ST[s][d]
+            )
+            for k in nodes:
+                prob += (
+                    lpSum([T[s][d][i][k] for i in nodes if adj_matrix[i][k]]) ==
+                    lpSum([T[s][d][k][j] for j in nodes if adj_matrix[k][j]])
+                )
 
-    # maximum key bandwidth constraint
+    # maximum resource constraint
     for i in nodes:
         for j in nodes:
             if adj_matrix[i][j]:
                 prob += (
-                    lpSum([
-                        lpSum([K[s][d][n][i][j] * traffic_matrix[s][d][n][0] for n in range(traffic_mat_num[s][d])]) for s in nodes for d in nodes
-                    ]) <= ReservedKeyBw[i][j]
+                    lpSum([T[s][d][i][j] for s in nodes for d in nodes]) <= ReservedDataBw[i][j]
                 )
+
+    for s in nodes:
+        for d in nodes:
+            prob += (
+                lpSum([T[s][d][s][j] for j in nodes if adj_matrix[s][j]]) <= traffic_matrix[s][d]
+            )
+            prob += (
+                lpSum([T[s][d][i][d] for i in nodes if adj_matrix[i][d]]) <= traffic_matrix[s][d]
+            )
+
+    # Key Res
+    # key & data constraint
+    # for s in nodes:
+    #     for d in nodes:
+    #         for k in nodes:
+    #             prob += (
+    #                 lpSum([K[i][k] for i in nodes if adj_matrix[i][k]]) ==
+    #                 lpSum([T[i][k] for i in nodes if adj_matrix[i][k]])
+    #             )
 
     # continuous constraint
     for s in nodes:
         for d in nodes:
-            for n in range(traffic_mat_num[s][d]):
-                for k in nodes:
-                    prob += (
-                        lpSum([K[s][d][n][i][k] for i in nodes if ])
-                    )
+            # Here we can limit the number of hops.
+            prob += (
+                lpSum([K[s][d][s][j] for j in nodes if adj_matrix[s][j]]) == SK[s][d]
+            )
+            prob += (
+                lpSum([K[s][d][i][d] for i in nodes if adj_matrix[i][d]]) == SK[s][d]
+            )
+            for k in nodes:
+                prob += (
+                    lpSum([K[s][d][i][k] for i in nodes if adj_matrix[i][k]]) ==
+                    lpSum([K[s][d][k][j] for j in nodes if adj_matrix[k][j]])
+                )
+
+    # maximum resource constraint
+    for i in nodes:
+        for j in nodes:
+            if adj_matrix[i][j]:
+                prob += (
+                    lpSum([K[s][d][i][j] for s in nodes for d in nodes]) <= ReservedKeyBw[i][j]
+                )
+
+    for s in nodes:
+        for d in nodes:
+            prob += (
+                lpSum([K[s][d][s][j] for j in nodes if adj_matrix[s][j]]) <= traffic_matrix[s][d]
+            )
+            prob += (
+                lpSum([K[s][d][i][d] for i in nodes if adj_matrix[i][d]]) <= traffic_matrix[s][d]
+            )
 
     # The problem is solved using PuLP's choice of Solver
     prob.solve()
 
-    print("Status:", LpStatus[prob.status])
+    # print("Status:", LpStatus[prob.status])
+    logging.info("Status:{}".format(LpStatus[prob.status]))
     for v in prob.variables():
-        print(v.name, "=", v.varValue)
+        logging.info("{} = {}".format(v.name, v.varValue))
+        # print(v.name, "=", v.varValue)
+    logging.info("Adj Matrix: {}".format(adj_matrix))
+    logging.info("Traffic Matrix: {}".format(traffic_matrix))
+    logging.info("Total throughput is :{}".format(sum([sum(i) for i in traffic_matrix])))
 
 
 def generate_adj_matrix(nodes):
     # row represents src node, col represents dst node.
-    adj_matrix = [[random.randint(0, 1) if i != j else 0 for j in range(nodes)] for i in range(nodes)]
+    # adj_matrix = [[random.randint(0, 1) if i != j else 0 for j in range(nodes)] for i in range(nodes)]
+    adj_matrix = [[0, 1, 0, 0, 1, 0], [1, 0, 1, 0, 1, 0], [0, 1, 0, 1, 0, 1], [0, 0, 1, 0, 0, 1], [1, 1, 0, 0, 0, 1],
+                  [0, 0, 1, 1, 1, 0]]
     return adj_matrix
 
 
@@ -119,11 +195,21 @@ def generate_traffic_matrix(nodes, num_req):
         bw_key = random.randint(0, 10)
         bw_data = random.randint(0, 10)
         req = (bw_key, bw_data)
-        row = random.randint(0, nodes-1)
-        col = random.randint(0, nodes-1)
+        row = random.randint(0, nodes - 1)
+        col = random.randint(0, nodes - 1)
         while row == col:
             col = random.randint(0, nodes - 1)
         traffic_matrix[row][col].append(req)
+    return traffic_matrix
+
+
+def generate_traffic_matrix_v2(nodes):
+    # traffic_matrix = [[0 for _ in range(nodes)] for _ in range(nodes)]
+    # for s in range(nodes):
+    #     for d in range(nodes):
+    #         if s == d: continue
+    #         traffic_matrix[s][d] = random.randint(0, 10)
+    traffic_matrix = [[0, 8, 5, 1, 6, 2], [1, 0, 1, 8, 4, 10], [10, 3, 0, 7, 0, 9], [2, 2, 7, 0, 8, 3], [0, 8, 8, 2, 0, 2], [5, 1, 8, 10, 7, 0]]
     return traffic_matrix
 
 
@@ -133,4 +219,5 @@ def cal_traffic_mat_req_num(traffic_matrix):
 
 
 if __name__ == '__main__':
+    logging.config.fileConfig('logconfig.ini')
     rwka_function()
