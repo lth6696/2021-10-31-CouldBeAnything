@@ -3,10 +3,12 @@ The RWKA model for the PuLP modeller
 
 Authors: LTH6696 2021
 """
+import pandas as pd
 import random
 import logging
 import logging.config
 
+import pulp.pulp
 from pulp import *
 
 
@@ -87,7 +89,8 @@ def rwka_function():
 
     # The objective function is added to 'prob' first
     prob += (
-        lpSum([ST[s][d]+SK[s][d] for s in nodes for d in nodes])
+        lpSum([ST[s][d] for s in nodes for d in nodes])
+        # lpSum([ST[s][d]+SK[s][d] for s in nodes for d in nodes])
     )
 
     # The follow constraints are entered
@@ -125,6 +128,13 @@ def rwka_function():
                 lpSum([T[s][d][i][d] for i in nodes if adj_matrix[i][d]]) <= traffic_matrix[s][d]
             )
 
+    # # outgoing & incoming
+    # for s in nodes:
+    #     for d in nodes:
+    #         prob += (
+    #             lpSum([T[s][d][i][s] for i in nodes]) == 0
+    #         )
+
     # Key Res
     # key & data constraint
     # for s in nodes:
@@ -135,50 +145,67 @@ def rwka_function():
     #                 lpSum([T[i][k] for i in nodes if adj_matrix[i][k]])
     #             )
 
-    # continuous constraint
-    for s in nodes:
-        for d in nodes:
-            # Here we can limit the number of hops.
-            prob += (
-                lpSum([K[s][d][s][j] for j in nodes if adj_matrix[s][j]]) == SK[s][d]
-            )
-            prob += (
-                lpSum([K[s][d][i][d] for i in nodes if adj_matrix[i][d]]) == SK[s][d]
-            )
-            for k in nodes:
-                prob += (
-                    lpSum([K[s][d][i][k] for i in nodes if adj_matrix[i][k]]) ==
-                    lpSum([K[s][d][k][j] for j in nodes if adj_matrix[k][j]])
-                )
-
-    # maximum resource constraint
-    for i in nodes:
-        for j in nodes:
-            if adj_matrix[i][j]:
-                prob += (
-                    lpSum([K[s][d][i][j] for s in nodes for d in nodes]) <= ReservedKeyBw[i][j]
-                )
-
-    for s in nodes:
-        for d in nodes:
-            prob += (
-                lpSum([K[s][d][s][j] for j in nodes if adj_matrix[s][j]]) <= traffic_matrix[s][d]
-            )
-            prob += (
-                lpSum([K[s][d][i][d] for i in nodes if adj_matrix[i][d]]) <= traffic_matrix[s][d]
-            )
+    # # continuous constraint
+    # for s in nodes:
+    #     for d in nodes:
+    #         # Here we can limit the number of hops.
+    #         prob += (
+    #             lpSum([K[s][d][s][j] for j in nodes if adj_matrix[s][j]]) == SK[s][d]
+    #         )
+    #         prob += (
+    #             lpSum([K[s][d][i][d] for i in nodes if adj_matrix[i][d]]) == SK[s][d]
+    #         )
+    #         for k in nodes:
+    #             prob += (
+    #                 lpSum([K[s][d][i][k] for i in nodes if adj_matrix[i][k]]) ==
+    #                 lpSum([K[s][d][k][j] for j in nodes if adj_matrix[k][j]])
+    #             )
+    #
+    # # maximum resource constraint
+    # for i in nodes:
+    #     for j in nodes:
+    #         if adj_matrix[i][j]:
+    #             prob += (
+    #                 lpSum([K[s][d][i][j] for s in nodes for d in nodes]) <= ReservedKeyBw[i][j]
+    #             )
+    #
+    # for s in nodes:
+    #     for d in nodes:
+    #         prob += (
+    #             lpSum([K[s][d][s][j] for j in nodes if adj_matrix[s][j]]) <= traffic_matrix[s][d]
+    #         )
+    #         prob += (
+    #             lpSum([K[s][d][i][d] for i in nodes if adj_matrix[i][d]]) <= traffic_matrix[s][d]
+    #         )
 
     # The problem is solved using PuLP's choice of Solver
     prob.solve()
 
     # print("Status:", LpStatus[prob.status])
     logging.info("Status:{}".format(LpStatus[prob.status]))
-    for v in prob.variables():
-        logging.info("{} = {}".format(v.name, v.varValue))
-        # print(v.name, "=", v.varValue)
-    logging.info("Adj Matrix: {}".format(adj_matrix))
-    logging.info("Traffic Matrix: {}".format(traffic_matrix))
+    # for v in prob.variables():
+    #     logging.info("{} = {}".format(v.name, v.varValue))
+    logging.info("Adj Matrix: \n{}".format(pd.DataFrame(adj_matrix)))
+    logging.info("Traffic Matrix: \n{}".format(pd.DataFrame(traffic_matrix)))
+    logging.info("Data Alloc Situation: \n{}".format(output_matrix(ST)))
+    for s in nodes:
+        for d in nodes:
+            if ST[s][d].value():
+                logging.info("{}-{} Data Alloc Path: \n{}".format(s, d, output_matrix(T[s][d])))
     logging.info("Total throughput is :{}".format(sum([sum(i) for i in traffic_matrix])))
+
+
+def output_matrix(matrix):
+    M = []
+    for i in matrix:
+        m = []
+        for j in i:
+            if type(j) == pulp.LpVariable:
+                m.append(int(j.value()))
+            else:
+                m.append(0)
+        M.append(m)
+    return pd.DataFrame(M)
 
 
 def generate_adj_matrix(nodes):
