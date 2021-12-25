@@ -15,6 +15,8 @@ from pulp import *
 def rwka_function():
     prob = LpProblem("BD", LpMaximize)
 
+    solver = getSolver('CPLEX_CMD', timeLimit=10)
+
     # Creates a list of all nodes
     nodes = [i for i in range(6)]
 
