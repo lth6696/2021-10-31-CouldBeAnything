@@ -22,14 +22,12 @@ def rwka_function():
     adj_matrix = generate_adj_matrix(len(nodes))
 
     # Creates traffic matrix
-    # traffic_matrix = generate_traffic_matrix(len(nodes), 10)
-    # traffic_mat_num = cal_traffic_mat_req_num(traffic_matrix)
     traffic_matrix = generate_traffic_matrix_v2(len(nodes))
 
     # Inputs
     ReservedKeyBw = [[4*j for j in i] for i in adj_matrix]
     ReservedDataBw = [[8*j for j in i] for i in adj_matrix]
-    alpha = 10
+    alpha = 10e5
 
     # Variables
     # K indicates whether the key resource is successfully allocated.
@@ -49,6 +47,7 @@ def rwka_function():
                                 if adj_matrix[m][n]:
                                     temp_m.append(LpVariable("KeyBwSucAlloc_{}_{}_{}_{}_{}_{}".format(s, d, i, j, m, n),
                                                              lowBound=0,
+                                                             upBound=1,
                                                              cat=LpInteger))
                                 else:
                                     temp_m.append(0)
@@ -72,6 +71,7 @@ def rwka_function():
                     if adj_matrix[i][j]:
                         temp_i.append(LpVariable("DataBwSucAlloc_{}_{}_{}_{}".format(s, d, i, j),
                                                  lowBound=0,
+                                                 upBound=1,
                                                  cat=LpInteger))
                     else:
                         temp_i.append(0)
@@ -79,24 +79,25 @@ def rwka_function():
             temp_src.append(temp_dst)
         T.append(temp_src)
 
-    # P indicates whether the (i,j) is successfully allocated.
-    P = []  # list structure, P[src][dst][i][j]
-    for s in nodes:
-        temp_src = []
-        for d in nodes:
-            temp_dst = []
-            for i in nodes:
-                temp_i = []
-                for j in nodes:
-                    if adj_matrix[i][j]:
-                        temp_i.append(LpVariable("KeyAllocInter_{}_{}_{}_{}".format(s, d, i, j),
-                                                 lowBound=0,
-                                                 cat=LpInteger))
-                    else:
-                        temp_i.append(0)
-                temp_dst.append(temp_i)
-            temp_src.append(temp_dst)
-        P.append(temp_src)
+    # # P indicates whether the (i,j) is successfully allocated.
+    # P = []  # list structure, P[src][dst][i][j]
+    # for s in nodes:
+    #     temp_src = []
+    #     for d in nodes:
+    #         temp_dst = []
+    #         for i in nodes:
+    #             temp_i = []
+    #             for j in nodes:
+    #                 if adj_matrix[i][j]:
+    #                     temp_i.append(LpVariable("KeyAllocInter_{}_{}_{}_{}".format(s, d, i, j),
+    #                                              lowBound=0,
+    #                                              upBound=1,
+    #                                              cat=LpInteger))
+    #                 else:
+    #                     temp_i.append(0)
+    #             temp_dst.append(temp_i)
+    #         temp_src.append(temp_dst)
+    #     P.append(temp_src)
 
     # ST indicates whether the request for data res is successfully allocated.
     ST = []  # list structure, S[src][dst].
@@ -104,7 +105,7 @@ def rwka_function():
         temp_src = []
         for d in nodes:
             temp_src.append(LpVariable("DataSucAllo_{}_{}".format(s, d),
-                                       lowBound=0, cat=LpInteger))
+                                       lowBound=0, upBound=1, cat=LpInteger))
         ST.append(temp_src)
 
     # SK indicates whether the request for key res is successfully allocated.
@@ -113,13 +114,13 @@ def rwka_function():
         temp_src = []
         for d in nodes:
             temp_src.append(LpVariable("KeySucAllo_{}_{}".format(s, d),
-                                       lowBound=0, cat=LpInteger))
+                                       lowBound=0, upBound=1, cat=LpInteger))
         SK.append(temp_src)
 
     # The objective function is added to 'prob' first
     prob += (
-        lpSum([ST[s][d]+SK[s][d] for s in nodes for d in nodes])
-        # lpSum([ST[s][d] for s in nodes for d in nodes])
+        # lpSum([ST[s][d]+SK[s][d] for s in nodes for d in nodes])
+        lpSum([ST[s][d] for s in nodes for d in nodes])
     )
 
     # The follow constraints are entered
@@ -135,17 +136,18 @@ def rwka_function():
                 lpSum([T[s][d][i][d] for i in nodes if adj_matrix[i][d]]) == ST[s][d]
             )
             for k in nodes:
-                prob += (
-                    lpSum([T[s][d][i][k] for i in nodes if adj_matrix[i][k]]) ==
-                    lpSum([T[s][d][k][j] for j in nodes if adj_matrix[k][j]])
-                )
+                if k != s and k != d:
+                    prob += (
+                        lpSum([T[s][d][i][k] for i in nodes if adj_matrix[i][k]]) ==
+                        lpSum([T[s][d][k][j] for j in nodes if adj_matrix[k][j]])
+                    )
 
     # maximum resource constraint
     for i in nodes:
         for j in nodes:
             if adj_matrix[i][j]:
                 prob += (
-                    lpSum([T[s][d][i][j] for s in nodes for d in nodes]) <= ReservedDataBw[i][j]
+                    lpSum([T[s][d][i][j] * traffic_matrix[s][d] for s in nodes for d in nodes]) <= ReservedDataBw[i][j]
                 )
 
     for s in nodes:
@@ -157,17 +159,6 @@ def rwka_function():
                 lpSum([T[s][d][i][d] for i in nodes if adj_matrix[i][d]]) <= traffic_matrix[s][d]
             )
 
-
-    # # outgoing and incoming
-    # for s in nodes:
-    #     for d in nodes:
-    #         prob += (
-    #             lpSum([T[s][d][i][s] for i in nodes if adj_matrix[i][s]]) == 0
-    #         )
-    #         prob += (
-    #             lpSum([T[s][d][d][j] for j in nodes if adj_matrix[d][j]]) == 0
-    #         )
-
     # Key Res
     # relevance constraint
     for s in nodes:
@@ -176,29 +167,28 @@ def rwka_function():
                 for j in nodes:
                     if adj_matrix[i][j]:
                         prob += (
-                            lpSum([K[s][d][i][j][i][n] for n in nodes if adj_matrix[i][n]]) <= alpha * T[s][d][i][j]
+                            lpSum([K[s][d][i][j][i][n] for n in nodes if adj_matrix[i][n]]) == T[s][d][i][j]
                         )
                         prob += (
-                            lpSum([K[s][d][i][j][m][j] for m in nodes if adj_matrix[m][j]]) <= alpha * T[s][d][i][j]
+                            lpSum([K[s][d][i][j][m][j] for m in nodes if adj_matrix[m][j]]) >= T[s][d][i][j]
                         )
 
-    # continuous constraint
+    # m-n continuity constraint
     for s in nodes:
         for d in nodes:
             for i in nodes:
                 for j in nodes:
                     if adj_matrix[i][j]:
                         prob += (
-                            lpSum([K[s][d][i][j][i][n] for n in nodes if adj_matrix[i][n]]) == P[s][d][i][j]
-                        )
-                        prob += (
-                            lpSum([K[s][d][i][j][m][j] for m in nodes if adj_matrix[m][j]]) == P[s][d][i][j]
+                            lpSum([K[s][d][i][j][i][n] for n in nodes if adj_matrix[i][n]]) ==
+                            lpSum([K[s][d][i][j][m][j] for m in nodes if adj_matrix[m][j]])
                         )
                         for k in nodes:
-                            prob += (
-                                lpSum([K[s][d][i][j][m][k] for m in nodes if adj_matrix[m][k]]) ==
-                                lpSum([K[s][d][i][j][k][n] for n in nodes if adj_matrix[k][n]])
-                            )
+                            if k != i and k != j:
+                                prob += (
+                                    lpSum([K[s][d][i][j][m][k] for m in nodes if adj_matrix[m][k]]) ==
+                                    lpSum([K[s][d][i][j][k][n] for n in nodes if adj_matrix[k][n]])
+                                )
 
     # maximum resource constraint
     for m in nodes:
@@ -206,30 +196,56 @@ def rwka_function():
             if adj_matrix[m][n]:
                 prob += (
                     lpSum([
-                        lpSum([K[s][d][i][j][m][n] for i in nodes for j in nodes if adj_matrix[i][j]])
+                        traffic_matrix[s][d] * lpSum([K[s][d][i][j][m][n] for i in nodes for j in nodes if adj_matrix[i][j]])
                         for s in nodes for d in nodes
                     ]) <= ReservedKeyBw[m][n]
                 )
 
+    # i-j continuity constraint
     for s in nodes:
         for d in nodes:
             prob += (
-                lpSum([P[s][d][s][j] for j in nodes if adj_matrix[s][j]]) <= traffic_matrix[s][d]
+                lpSum([
+                    lpSum([K[s][d][s][j][s][n]] for n in nodes if adj_matrix[s][n]) for j in nodes if adj_matrix[s][j]
+                ]) == SK[s][d]
             )
             prob += (
-                lpSum([P[s][d][i][d] for i in nodes if adj_matrix[i][d]]) <= traffic_matrix[s][d]
-            )
-            prob += (
-                lpSum([P[s][d][s][j] for j in nodes if adj_matrix[s][j]]) == SK[s][d]
-            )
-            prob += (
-                lpSum([P[s][d][i][d] for i in nodes if adj_matrix[i][d]]) == SK[s][d]
+                    lpSum([
+                        lpSum([K[s][d][i][d][m][d]] for m in nodes if adj_matrix[m][d]) for i in nodes if
+                        adj_matrix[i][d]
+                    ]) == SK[s][d]
             )
             for k in nodes:
-                prob += (
-                    lpSum([P[s][d][i][k] for i in nodes if adj_matrix[i][k]]) ==
-                    lpSum([P[s][d][k][j] for j in nodes if adj_matrix[k][j]])
-                )
+                if k != s and k != d:
+                    prob += (
+                        lpSum([
+                            lpSum([K[s][d][i][k][m][k] for m in nodes if adj_matrix[m][k]]) for i in nodes if adj_matrix[i][k]
+                        ]) ==
+                        lpSum([
+                            lpSum([K[s][d][k][j][k][n] for n in nodes if adj_matrix[k][n]]) for j in nodes if
+                            adj_matrix[k][j]
+                        ])
+                    )
+
+
+            # prob += (
+            #     lpSum([P[s][d][s][j] for j in nodes if adj_matrix[s][j]]) <= traffic_matrix[s][d]
+            # )
+            # prob += (
+            #     lpSum([P[s][d][i][d] for i in nodes if adj_matrix[i][d]]) <= traffic_matrix[s][d]
+            # )
+            # prob += (
+            #     lpSum([P[s][d][s][j] for j in nodes if adj_matrix[s][j]]) == SK[s][d]
+            # )
+            # prob += (
+            #     lpSum([P[s][d][i][d] for i in nodes if adj_matrix[i][d]]) == SK[s][d]
+            # )
+            # for k in nodes:
+            #     if k != s and k != d:
+            #         prob += (
+            #             lpSum([P[s][d][i][k] for i in nodes if adj_matrix[i][k]]) ==
+            #             lpSum([P[s][d][k][j] for j in nodes if adj_matrix[k][j]])
+            #         )
 
 
     # The problem is solved using PuLP's choice of Solver
@@ -242,10 +258,21 @@ def rwka_function():
     logging.info("Adj Matrix: \n{}".format(pd.DataFrame(adj_matrix)))
     logging.info("Traffic Matrix: \n{}".format(pd.DataFrame(traffic_matrix)))
     logging.info("Data Alloc Situation: \n{}".format(output_matrix(ST)))
+    logging.info("Key Alloc Situation: \n{}".format(output_matrix(SK)))
     for s in nodes:
         for d in nodes:
             if ST[s][d].value():
                 logging.info("{}-{} Data Alloc Path: \n{}".format(s, d, output_matrix(T[s][d])))
+    for s in nodes:
+        for d in nodes:
+            for i in nodes:
+                for j in nodes:
+                    try:
+                        if T[s][d][i][j].value():
+                            logging.info("{}_{}_{}_{} Key Alloc Path: \n{}".format(s, d, i, j, output_matrix(K[s][d][i][j])))
+                    except:
+                        continue
+
     logging.info("Total throughput is :{}".format(sum([sum(i) for i in traffic_matrix])))
 
 
@@ -255,6 +282,9 @@ def output_matrix(matrix):
         m = []
         for j in i:
             if type(j) == pulp.LpVariable:
+                if j.value() is None:
+                    m.append(0)
+                    continue
                 m.append(int(j.value()))
             else:
                 m.append(0)
