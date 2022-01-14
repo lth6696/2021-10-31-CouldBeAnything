@@ -2,8 +2,8 @@ import networkx as nx
 import random
 import numpy as np
 import pandas as pd
+import datetime
 
-import pdb
 
 pd.set_option('display.max_column', 200)
 pd.set_option('display.width', 200)
@@ -76,25 +76,38 @@ def gen_lightpath_topo(path, wavelengths, tafs):
 # A heuristic algorithm
 def heuristic_algorithm():
     root = '../datasets/nsfnet/nsfnet.graphml'
+    nodes = 14
 
+    success_alloc_matrix = [[0 for _ in range(nodes)] for _ in range(nodes)]
     tafs = [0.001, 0.0001, 0.0005, 0.00001]
-    traffic_matrix = gen_traffic_matrix(14, tafs)
+    traffic_matrix = gen_traffic_matrix(nodes, tafs)
     adj_matrix, adj_matrix_with_lightpath = gen_lightpath_topo(root, wavelengths=4, tafs=tafs)
 
     for src in range(len(traffic_matrix)):
         for dst in range(len(traffic_matrix)):
             traffic = traffic_matrix[src][dst]
+            # 若流量矩阵从src至dst存在连接请求，为其路由并分配资源
             if traffic:
+                # 路由
                 paths = function_multi_hop(4, src, traffic, adj_matrix_with_lightpath)
-                print(src, dst, paths)
+                # 若路由成功，使用success_alloc_matrix进行记录
+                if paths:
+                    success_alloc_matrix[src][dst] = 1
+                # 分配资源
                 for path in paths:
                     adj_matrix_with_lightpath[path[0]][path[1]][path[2]].ava_data -= traffic.data
                     adj_matrix_with_lightpath[path[0]][path[1]][path[2]].ava_key -= traffic.key
 
+    return success_alloc_matrix
 
+
+# 基于多约束的最短路径算法，约束有：
+# 1 - 安全等级
+# 2 - 资源多寡
 def function_multi_hop(max_hop, src, traffic, adj_matrix_with_lightpath):
     dst = traffic.dst
 
+    # 设定迭代深度
     if max_hop <= 0:
         return []
 
@@ -106,12 +119,13 @@ def function_multi_hop(max_hop, src, traffic, adj_matrix_with_lightpath):
             path = (src, dst, lightpath.index)
             return [path]
 
-    # 若目的地不可达
+    # 若目的地不可直达
     tmp_path = []
     path_len = 10
     for j in range(len(adj_matrix_with_lightpath[src])):
         if j != dst:
             for inter_lp in adj_matrix_with_lightpath[src][j]:
+                # 三个约束条件，光路等级高于业务，光路有可用通资源，光路有可用密资源
                 if inter_lp.t >= traffic.t and \
                         inter_lp.ava_data >= traffic.data and \
                         inter_lp.ava_key >= traffic.data * traffic.t:
@@ -124,4 +138,8 @@ def function_multi_hop(max_hop, src, traffic, adj_matrix_with_lightpath):
 
 
 if __name__ == '__main__':
-    heuristic_algorithm()
+    starttime = datetime.datetime.now()
+    success_alloc_matrix = heuristic_algorithm()
+    endtime = datetime.datetime.now()
+    print((endtime - starttime))
+    print(sum([sum(i) for i in success_alloc_matrix]))
