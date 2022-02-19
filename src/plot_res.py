@@ -4,8 +4,8 @@ import scipy.io as scio
 
 
 def plot_successed_route():
-    SHF_FILE = 'shf_suc.mat'
-    MRU_FILE = 'mru_suc.mat'
+    SHF_FILE = './data/shf_suc.mat'
+    MRU_FILE = './data/mru_suc.mat'
     SHF_SUCCESS = scio.loadmat(SHF_FILE)
     MRU_SUCCESS = scio.loadmat(MRU_FILE)
 
@@ -14,6 +14,9 @@ def plot_successed_route():
     shf_err_pos = [SHF_SUCCESS['max'][0][i] - SHF_SUCCESS['mean'][0][i] for i in range(len(SHF_SUCCESS['mean'][0]))]
     mru_err_neg = [MRU_SUCCESS['mean'][0][i] - MRU_SUCCESS['min'][0][i] for i in range(len(MRU_SUCCESS['mean'][0]))]
     mru_err_pos = [MRU_SUCCESS['max'][0][i] - MRU_SUCCESS['mean'][0][i] for i in range(len(MRU_SUCCESS['mean'][0]))]
+
+    excellent_val = [SHF_SUCCESS['mean'][0][i] - MRU_SUCCESS['mean'][0][i] for i in range(len(SHF_SUCCESS['mean'][0]))]
+    print(np.mean(excellent_val))
 
     plot_style()
     plt.errorbar(x, SHF_SUCCESS['mean'][0], yerr=[shf_err_neg, shf_err_pos], label='SHF',
@@ -33,8 +36,8 @@ def plot_successed_route():
 
 
 def plot_shortest_hop_first():
-    SHF_FILE = 'shf_hop.mat'
-    MRU_FILE = 'mru_hop.mat'
+    SHF_FILE = './data/shf_hop.mat'
+    MRU_FILE = './data/mru_hop.mat'
     SHF_HOP_DIS = scio.loadmat(SHF_FILE)
     MRU_HOP_DIS = scio.loadmat(MRU_FILE)
 
@@ -43,6 +46,9 @@ def plot_shortest_hop_first():
     shf_err_pos = [SHF_HOP_DIS['max'][0][i] - SHF_HOP_DIS['mean'][0][i] for i in range(len(SHF_HOP_DIS['mean'][0]))]
     mru_err_neg = [MRU_HOP_DIS['mean'][0][i] - MRU_HOP_DIS['min'][0][i] for i in range(len(MRU_HOP_DIS['mean'][0]))]
     mru_err_pos = [MRU_HOP_DIS['max'][0][i] - MRU_HOP_DIS['mean'][0][i] for i in range(len(MRU_HOP_DIS['mean'][0]))]
+
+    excellent_val = [SHF_HOP_DIS['mean'][0][i] - MRU_HOP_DIS['mean'][0][i] for i in range(len(SHF_HOP_DIS['mean'][0]))]
+    print(np.mean(excellent_val))
 
     plot_style()
     plt.errorbar(x, SHF_HOP_DIS['mean'][0], yerr=[shf_err_neg, shf_err_pos], label='SHF',
@@ -62,8 +68,8 @@ def plot_shortest_hop_first():
 
 
 def plot_max_res_utilization():
-    SHF_FILE = 'shf_res.mat'
-    MRU_FILE = 'mru_res.mat'
+    SHF_FILE = './data/shf_res.mat'
+    MRU_FILE = './data/mru_res.mat'
     SHF_RES = scio.loadmat(SHF_FILE)
     MRU_RES = scio.loadmat(MRU_FILE)
 
@@ -76,6 +82,11 @@ def plot_max_res_utilization():
     mru_data_pos = [MRU_RES['data_max'][0][i] - MRU_RES['data_mean'][0][i] for i in range(len(MRU_RES['data_mean'][0]))]
     mru_key_neg = [MRU_RES['key_mean'][0][i] - MRU_RES['key_min'][0][i] for i in range(len(MRU_RES['key_mean'][0]))]
     mru_key_pos = [MRU_RES['key_max'][0][i] - MRU_RES['key_mean'][0][i] for i in range(len(MRU_RES['key_mean'][0]))]
+
+    excellent_val = [SHF_RES['data_mean'][0][i] - MRU_RES['data_mean'][0][i] for i in range(len(SHF_RES['data_mean'][0]))]
+    print(np.mean(excellent_val))
+    excellent_val = [SHF_RES['key_mean'][0][i] - MRU_RES['key_mean'][0][i] for i in range(len(SHF_RES['key_mean'][0]))]
+    print(np.mean(excellent_val))
 
     plot_style()
     plt.errorbar(x, SHF_RES['data_mean'][0], yerr=[shf_data_neg, shf_data_pos], label='SHF-data',
@@ -119,4 +130,4 @@ def plot_style():
 
 
 if __name__ == '__main__':
-    plot_successed_route()
+    plot_max_res_utilization()
