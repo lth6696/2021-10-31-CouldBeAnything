@@ -35,7 +35,8 @@ def nsfnet():
         pos[node[0]] = (x, -y)
         label[node[0]] = node[0]
 
-    Style.style(width=8.6, height=4)
+    # Style.style(width=8.6, height=4)
+    Style.style(width=5.6, height=3.6)
     nx.draw(G, pos, node_size=100, node_color='#FADEC2',
             linewidths=0.5, edgecolors='#42454A',
             width=1, edge_color='#AEB9CA')
@@ -64,4 +65,4 @@ def geant2():
 
 
 if __name__ == '__main__':
-    geant2()
+    nsfnet()
