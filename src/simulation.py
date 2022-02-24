@@ -18,10 +18,19 @@ def cal_res(adj_mat):
     return np.mean(data_utilization), np.mean(key_utilization)
 
 
+def cal_spf_res(adj_mat, max_resource):
+    utilization = []
+    for i in range(len(adj_mat)):
+        for j in range(len(adj_mat)):
+            for t in adj_mat[i][j]:
+                utilization.append((max_resource - t.resource) / max_resource)
+    return np.mean(utilization)
+
+
 if __name__ == '__main__':
     logging.config.fileConfig('logconfig.ini')
     root = '../datasets/nsfnet/nsfnet.graphml'
-    file = 'runtime.mat'
+    file = 'spf_res.mat'
     nodes = 14
     tafs = [0.001, 0.005, 0.01, 0.05]
     lightpath_res = 100
@@ -31,14 +40,16 @@ if __name__ == '__main__':
     MRU = [0, 0.5, 0.5, 0]
     HOP_ERR = [[], [], []]
     SUC_ERR = [[], [], []]
-    RES_ERR = [[], [], [], [], [], []]
+    DKR_ERR = [[], [], [], [], [], []]
+    RES_ERR = [[], [], []]
     SUCCESS_ALLOC = []
     RUNTIME = []
     x = [(i+1)*0.05 for i in range(20)]
-    for traffic_load in [0.4]:
+    for traffic_load in [(i+1)*0.05 for i in range(20)]:
         data_hop = []
         success = []
         resource = [[], []]
+        resource_spf = []
         runtime = []
         for k in range(10):
             traffic_res = int(lightpath_res * traffic_load)
@@ -53,7 +64,6 @@ if __name__ == '__main__':
                     traffic = traffic_matrix[s][d]
                     # res = Algorithms.heuristic_algorithm(traffic, G, adj_matrix_with_lightpath, tafs, weight=None)
                     res = Algorithms.shorest_path_algorithm(traffic, adj_matrix_with_lightpath)
-                    # print(res)
                     if res:
                         ave_hop.append(len(res))
                         S[s][d] = 1
@@ -73,22 +83,27 @@ if __name__ == '__main__':
             # r = cal_res(adj_matrix_with_lightpath)
             # resource[0].append(r[0])
             # resource[1].append(r[1])
-            runtime.append((endtime - starttime) * 1000)
-            print(runtime)
-        RUNTIME.append(np.mean(runtime))
-        # RES_ERR[0].append(np.min(resource[0]))
-        # RES_ERR[1].append(np.mean(resource[0]))
-        # RES_ERR[2].append(np.max(resource[0]))
-        # RES_ERR[3].append(np.min(resource[1]))
-        # RES_ERR[4].append(np.mean(resource[1]))
-        # RES_ERR[5].append(np.max(resource[1]))
+            r = cal_spf_res(adj_matrix_with_lightpath, 100)
+            resource_spf.append(r)
+            # runtime.append((endtime - starttime) * 1000)
+        # RUNTIME.append(np.mean(runtime))
+        RES_ERR[0].append(np.min(resource_spf))
+        RES_ERR[1].append(np.mean(resource_spf))
+        RES_ERR[2].append(np.max(resource_spf))
+        # DKR_ERR[0].append(np.min(resource[0]))
+        # DKR_ERR[1].append(np.mean(resource[0]))
+        # DKR_ERR[2].append(np.max(resource[0]))
+        # DKR_ERR[3].append(np.min(resource[1]))
+        # DKR_ERR[4].append(np.mean(resource[1]))
+        # DKR_ERR[5].append(np.max(resource[1]))
         # SUC_ERR[0].append(np.min(success))
         # SUC_ERR[1].append(np.mean(success))
         # SUC_ERR[2].append(np.max(success))
         # HOP_ERR[0].append(np.min(data_hop))
         # HOP_ERR[1].append(np.mean(data_hop))
         # HOP_ERR[2].append(np.max(data_hop))
-    scio.savemat(file, {'runtime': RUNTIME})
+    # scio.savemat(file, {'runtime': RUNTIME})
+    scio.savemat(file, {'min': RES_ERR[0], 'mean': RES_ERR[1], 'max': RES_ERR[2]})
     # scio.savemat(file, {'data_min': RES_ERR[0], 'data_mean': RES_ERR[1], 'data_max': RES_ERR[2],
     #                     'key_min': RES_ERR[3], 'key_mean': RES_ERR[4], 'key_max': RES_ERR[5]})
     # scio.savemat(file, {'min': SUC_ERR[0], 'mean': SUC_ERR[1], 'max': SUC_ERR[2]})
