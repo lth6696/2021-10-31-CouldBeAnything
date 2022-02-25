@@ -20,7 +20,12 @@ def plot_successed_route():
     spf_err_pos = [SPF_SUCCESS['max'][0][i] - SPF_SUCCESS['mean'][0][i] for i in range(len(SPF_SUCCESS['mean'][0]))]
 
     excellent_val = [SHF_SUCCESS['mean'][0][i] - MRU_SUCCESS['mean'][0][i] for i in range(len(SHF_SUCCESS['mean'][0]))]
-    print(np.mean(excellent_val))
+    print('SHF better than MRU - ', np.mean(excellent_val))
+    excellent_val = [SPF_SUCCESS['mean'][0][i] - SHF_SUCCESS['mean'][0][i] for i in range(len(SPF_SUCCESS['mean'][0]))]
+    print('SPF better than SHF - ', np.mean(excellent_val))
+    print("SHF - {:4f} MRU - {:4f} SPF - {:4f}".format(np.mean(SHF_SUCCESS['mean'][0]),
+                                                       np.mean(MRU_SUCCESS['mean'][0]),
+                                                       np.mean(SPF_SUCCESS['mean'][0])))
 
     plot_style()
     plt.errorbar(x, SHF_SUCCESS['mean'][0], yerr=[shf_err_neg, shf_err_pos], label='SHF',
@@ -59,7 +64,12 @@ def plot_shortest_hop_first():
     spf_err_pos = [SPF_HOP_DIS['max'][0][i] - SPF_HOP_DIS['mean'][0][i] for i in range(len(SPF_HOP_DIS['mean'][0]))]
 
     excellent_val = [SHF_HOP_DIS['mean'][0][i] - MRU_HOP_DIS['mean'][0][i] for i in range(len(SHF_HOP_DIS['mean'][0]))]
-    print(np.mean(excellent_val))
+    print('SHF better than MRU - ', np.mean(excellent_val))
+    excellent_val = [SPF_HOP_DIS['mean'][0][i] - SHF_HOP_DIS['mean'][0][i] for i in range(len(SPF_HOP_DIS['mean'][0]))]
+    print('SPF better than SHF - ', np.mean(excellent_val))
+    print("SHF - {:4f} MRU - {:4f} SPF - {:4f}".format(np.mean(SHF_HOP_DIS['mean'][0]),
+                                                       np.mean(MRU_HOP_DIS['mean'][0]),
+                                                       np.mean(SPF_HOP_DIS['mean'][0])))
 
     plot_style()
     plt.errorbar(x, SHF_HOP_DIS['mean'][0], yerr=[shf_err_neg, shf_err_pos], label='SHF',
@@ -102,9 +112,11 @@ def plot_max_res_utilization():
     spf_err_pos = [SPF_RES['max'][0][i] - SPF_RES['mean'][0][i] for i in range(len(SPF_RES['mean'][0]))]
 
     excellent_val = [SHF_RES['data_mean'][0][i] - MRU_RES['data_mean'][0][i] for i in range(len(SHF_RES['data_mean'][0]))]
-    print(np.mean(excellent_val))
+    print('Data: SHF better than MRU', np.mean(excellent_val))
     excellent_val = [SHF_RES['key_mean'][0][i] - MRU_RES['key_mean'][0][i] for i in range(len(SHF_RES['key_mean'][0]))]
-    print(np.mean(excellent_val))
+    print('Key: SHF better than MRU', np.mean(excellent_val))
+    excellent_val = [SPF_RES['mean'][0][i] - MRU_RES['data_mean'][0][i] for i in range(len(SPF_RES['mean'][0]))]
+    print('Data: SPF better than MRU', np.mean(excellent_val))
 
     plot_style()
     plt.errorbar(x, SHF_RES['data_mean'][0], yerr=[shf_data_neg, shf_data_pos], label='SHF-data',
@@ -151,4 +163,4 @@ def plot_style():
 
 
 if __name__ == '__main__':
-    plot_shortest_hop_first()
+    plot_max_res_utilization()
