@@ -38,7 +38,7 @@ def plot_successed_route():
                  color='#FFC000', ls='-', lw=0.5,
                  marker='o', mec='#FFC000', mfc='#FFC000', mew=0.5, ms=2)
     plt.xlabel('Workload')
-    plt.ylabel('Success allocation rate (%)')
+    plt.ylabel('Success mapping rate (%)')
     plt.xticks([0, 0.2, 0.4, 0.6, 0.8, 1])
     plt.yticks(rotation='vertical')
     plt.tight_layout()
@@ -163,4 +163,4 @@ def plot_style():
 
 
 if __name__ == '__main__':
-    plot_max_res_utilization()
+    plot_successed_route()
