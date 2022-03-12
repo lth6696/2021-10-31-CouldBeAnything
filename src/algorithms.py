@@ -78,7 +78,8 @@ class Algorithms:
             D, K, L = 0, 0, 0
             for hop in path:
                 lightpath = AdjMat[hop[0]][hop[1]][hop[2]]
-                D += (lightpath.max_data_resource() - lightpath.ava_data) / lightpath.max_data_resource()
+                # D += (lightpath.max_data_resource() - lightpath.ava_data) / lightpath.max_data_resource()
+                D += (lightpath.ava_data) / lightpath.max_data_resource()   # max resource utilization
                 K += (lightpath.max_key_resource() - lightpath.ava_key) / lightpath.max_key_resource()
                 L += ((lightpath.t - traffic.t) / denominator) ** 2
             a1.append(D / len(path))
