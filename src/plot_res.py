@@ -31,14 +31,14 @@ def plot_successed_route():
     plt.errorbar(x, SHF_SUCCESS['mean'][0], yerr=[shf_err_neg, shf_err_pos], label='SHF',
                  color='#4472C4', ls='-', lw=0.5,
                  marker='o', mec='#4472C4', mfc='#4472C4', mew=0.5, ms=2)
-    plt.errorbar(x, MRU_SUCCESS['mean'][0], yerr=[mru_err_neg, mru_err_pos], label='LLF',
+    plt.errorbar(x, MRU_SUCCESS['mean'][0], yerr=[mru_err_neg, mru_err_pos], label='SLF',
                  color='#C55A11', ls='-', lw=0.5,
                  marker='o', mec='#C55A11', mfc='#C55A11', mew=0.5, ms=2)
     plt.errorbar(x, SPF_SUCCESS['mean'][0], yerr=[spf_err_neg, spf_err_pos], label='SPF',
                  color='#FFC000', ls='-', lw=0.5,
                  marker='o', mec='#FFC000', mfc='#FFC000', mew=0.5, ms=2)
-    plt.xlabel('Workload')
-    plt.ylabel('Success mapping rate (%)')
+    plt.xlabel('workload ratio')
+    plt.ylabel('success mapping rate (%)')
     plt.xticks([0, 0.2, 0.4, 0.6, 0.8, 1])
     plt.yticks(rotation='vertical')
     plt.tight_layout()
@@ -75,14 +75,14 @@ def plot_shortest_hop_first():
     plt.errorbar(x, SHF_HOP_DIS['mean'][0], yerr=[shf_err_neg, shf_err_pos], label='SHF',
                  color='#4472C4', ls='-', lw=0.5,
                  marker='o', mec='#4472C4', mfc='#4472C4', mew=0.5, ms=2)
-    plt.errorbar(x, MRU_HOP_DIS['mean'][0], yerr=[mru_err_neg, mru_err_pos], label='LLF',
+    plt.errorbar(x, MRU_HOP_DIS['mean'][0], yerr=[mru_err_neg, mru_err_pos], label='SLF',
                  color='#C55A11', ls='-', lw=0.5,
                  marker='o', mec='#C55A11', mfc='#C55A11', mew=0.5, ms=2)
     plt.errorbar(x, SPF_HOP_DIS['mean'][0], yerr=[spf_err_neg, spf_err_pos], label='SPF',
                  color='#FFC000', ls='-', lw=0.5,
                  marker='o', mec='#FFC000', mfc='#FFC000', mew=0.5, ms=2)
-    plt.xlabel('Workload')
-    plt.ylabel('Hop')
+    plt.xlabel('workload ratio')
+    plt.ylabel('hop')
     plt.xticks([0, 0.2, 0.4, 0.6, 0.8, 1])
     plt.yticks(rotation='vertical')
     plt.tight_layout()
@@ -125,7 +125,7 @@ def plot_max_res_utilization():
     # plt.errorbar(x, SHF_RES['key_mean'][0], yerr=[shf_key_neg, shf_key_pos], label='SHF-key',
     #              color='#B4C7E7', ls='-', lw=0.5,
     #              marker='o', mec='#B4C7E7', mfc='#B4C7E7', mew=0.5, ms=2)
-    plt.errorbar(x, MRU_RES['data_mean'][0], yerr=[mru_data_neg, mru_data_pos], label='MRU',
+    plt.errorbar(x, MRU_RES['data_mean'][0], yerr=[mru_data_neg, mru_data_pos], label='SLF',
                  color='#C55A11', ls='-', lw=0.5,
                  marker='o', mec='#C55A11', mfc='#C55A11', mew=0.5, ms=2)
     # plt.errorbar(x, MRU_RES['key_mean'][0], yerr=[mru_key_neg, mru_key_pos], label='MRU-key',
@@ -134,7 +134,7 @@ def plot_max_res_utilization():
     plt.errorbar(x, SPF_RES['mean'][0], yerr=[spf_err_neg, spf_err_pos], label='SPF',
                  color='#FFC000', ls='-', lw=0.5,
                  marker='o', mec='#FFC000', mfc='#FFC000', mew=0.5, ms=2)
-    plt.xlabel('Workload')
+    plt.xlabel('Workload ratio')
     plt.ylabel('Bandwidth utilization')
     plt.xticks([0, 0.2, 0.4, 0.6, 0.8, 1])
     plt.yticks(rotation='vertical')
@@ -172,14 +172,14 @@ def plot_level():
     plt.errorbar(x, SHF_LEV_DIS['mean'][0], yerr=[shf_err_neg, shf_err_pos], label='SHF',
                  color='#4472C4', ls='-', lw=0.5,
                  marker='o', mec='#4472C4', mfc='#4472C4', mew=0.5, ms=2)
-    plt.errorbar(x, MRU_LEV_DIS['mean'][0], yerr=[mru_err_neg, mru_err_pos], label='LLF',
+    plt.errorbar(x, MRU_LEV_DIS['mean'][0], yerr=[mru_err_neg, mru_err_pos], label='SLF',
                  color='#C55A11', ls='-', lw=0.5,
                  marker='o', mec='#C55A11', mfc='#C55A11', mew=0.5, ms=2)
     plt.errorbar(x, SPF_LEV_DIS['mean'][0], yerr=[spf_err_neg, spf_err_pos], label='SPF',
                  color='#FFC000', ls='-', lw=0.5,
                  marker='o', mec='#FFC000', mfc='#FFC000', mew=0.5, ms=2)
-    plt.xlabel('Workload')
-    plt.ylabel('Level deviation')
+    plt.xlabel('workload ratio')
+    plt.ylabel('security deviation')
     plt.xticks([0, 0.2, 0.4, 0.6, 0.8, 1])
     plt.yticks(rotation='vertical')
     plt.tight_layout()
@@ -210,4 +210,4 @@ def plot_style():
 
 
 if __name__ == '__main__':
-    plot_successed_route()
+    plot_level()
