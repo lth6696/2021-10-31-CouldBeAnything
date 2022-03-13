@@ -1,5 +1,6 @@
 
 import random
+import math
 import networkx as nx
 import numpy as np
 import logging
@@ -37,7 +38,7 @@ class Algorithms:
 
         # step 2
         paths = list(nx.shortest_simple_paths(Graph, str(s), str(d)))    # k-shortest paths
-        # logging.info("{}-{} all available paths \n{}".format(s, d, paths))
+        logging.info("{}-{} all available paths \n{}".format(s, d, paths))
         # dividend = 4
         # quotient = math.ceil(len(paths) / dividend)
         # remainder = len(paths) % dividend if len(paths) % dividend != 0 else dividend

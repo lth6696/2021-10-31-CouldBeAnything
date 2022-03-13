@@ -73,7 +73,7 @@ def gen_lightpath_topo(path, wavelengths, tafs, max_res):
             for t in range(adj_matrix[row][col]):
                 t_index = len(tafs) - 1 - t % len(tafs)
                 # t_index = random.randint(0, len(tafs)-1)
-                logging.info("Lightpath {}-{}-{} level {}".format(row, col, t, tafs[t_index]))
+                # logging.info("Lightpath {}-{}-{} level {}".format(row, col, t, tafs[t_index]))
                 lightpath = LightPath(row, col, t, max_res, tafs[t_index])
                 adj_matrix_with_lightpath[row][col].append(lightpath)
     logging.info("Adj Matrix\n{}".format(pd.DataFrame(adj_matrix)))

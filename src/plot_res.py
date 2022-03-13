@@ -5,7 +5,7 @@ import scipy.io as scio
 
 def plot_successed_route():
     SHF_FILE = './data/shf_suc.mat'
-    MRU_FILE = './data/mru_suc.mat'
+    MRU_FILE = './data/mlf_suc.mat'
     SPF_FILE = './data/spf_suc.mat'
     SHF_SUCCESS = scio.loadmat(SHF_FILE)
     MRU_SUCCESS = scio.loadmat(MRU_FILE)
@@ -31,7 +31,7 @@ def plot_successed_route():
     plt.errorbar(x, SHF_SUCCESS['mean'][0], yerr=[shf_err_neg, shf_err_pos], label='SHF',
                  color='#4472C4', ls='-', lw=0.5,
                  marker='o', mec='#4472C4', mfc='#4472C4', mew=0.5, ms=2)
-    plt.errorbar(x, MRU_SUCCESS['mean'][0], yerr=[mru_err_neg, mru_err_pos], label='MRU',
+    plt.errorbar(x, MRU_SUCCESS['mean'][0], yerr=[mru_err_neg, mru_err_pos], label='LLF',
                  color='#C55A11', ls='-', lw=0.5,
                  marker='o', mec='#C55A11', mfc='#C55A11', mew=0.5, ms=2)
     plt.errorbar(x, SPF_SUCCESS['mean'][0], yerr=[spf_err_neg, spf_err_pos], label='SPF',
@@ -49,7 +49,7 @@ def plot_successed_route():
 
 def plot_shortest_hop_first():
     SHF_FILE = './data/shf_hop.mat'
-    MRU_FILE = './data/mru_hop.mat'
+    MRU_FILE = './data/mlf_hop.mat'
     SPF_FILE = './data/spf_hop.mat'
     SHF_HOP_DIS = scio.loadmat(SHF_FILE)
     MRU_HOP_DIS = scio.loadmat(MRU_FILE)
@@ -75,7 +75,7 @@ def plot_shortest_hop_first():
     plt.errorbar(x, SHF_HOP_DIS['mean'][0], yerr=[shf_err_neg, shf_err_pos], label='SHF',
                  color='#4472C4', ls='-', lw=0.5,
                  marker='o', mec='#4472C4', mfc='#4472C4', mew=0.5, ms=2)
-    plt.errorbar(x, MRU_HOP_DIS['mean'][0], yerr=[mru_err_neg, mru_err_pos], label='MRU',
+    plt.errorbar(x, MRU_HOP_DIS['mean'][0], yerr=[mru_err_neg, mru_err_pos], label='LLF',
                  color='#C55A11', ls='-', lw=0.5,
                  marker='o', mec='#C55A11', mfc='#C55A11', mew=0.5, ms=2)
     plt.errorbar(x, SPF_HOP_DIS['mean'][0], yerr=[spf_err_neg, spf_err_pos], label='SPF',
@@ -86,7 +86,7 @@ def plot_shortest_hop_first():
     plt.xticks([0, 0.2, 0.4, 0.6, 0.8, 1])
     plt.yticks(rotation='vertical')
     plt.tight_layout()
-    plt.legend()
+    plt.legend(loc='upper left')
     plt.grid(True, ls=':', lw=0.5, c='#d5d6d8')
     plt.show()
 
@@ -144,8 +144,55 @@ def plot_max_res_utilization():
     plt.show()
 
 
+def plot_level():
+    SHF_FILE = './shf_lev.mat'
+    LLF_FILE = './mlf_lev.mat'
+    SPF_FILE = './spf_lev.mat'
+    SHF_LEV_DIS = scio.loadmat(SHF_FILE)
+    MRU_LEV_DIS = scio.loadmat(LLF_FILE)
+    SPF_LEV_DIS = scio.loadmat(SPF_FILE)
+
+    x = [(i + 1) * 0.05 for i in range(20)]
+    shf_err_neg = [SHF_LEV_DIS['mean'][0][i] - SHF_LEV_DIS['min'][0][i] for i in range(len(SHF_LEV_DIS['mean'][0]))]
+    shf_err_pos = [SHF_LEV_DIS['max'][0][i] - SHF_LEV_DIS['mean'][0][i] for i in range(len(SHF_LEV_DIS['mean'][0]))]
+    mru_err_neg = [MRU_LEV_DIS['mean'][0][i] - MRU_LEV_DIS['min'][0][i] for i in range(len(MRU_LEV_DIS['mean'][0]))]
+    mru_err_pos = [MRU_LEV_DIS['max'][0][i] - MRU_LEV_DIS['mean'][0][i] for i in range(len(MRU_LEV_DIS['mean'][0]))]
+    spf_err_neg = [SPF_LEV_DIS['mean'][0][i] - SPF_LEV_DIS['min'][0][i] for i in range(len(SPF_LEV_DIS['mean'][0]))]
+    spf_err_pos = [SPF_LEV_DIS['max'][0][i] - SPF_LEV_DIS['mean'][0][i] for i in range(len(SPF_LEV_DIS['mean'][0]))]
+
+    excellent_val = [SHF_LEV_DIS['mean'][0][i] - MRU_LEV_DIS['mean'][0][i] for i in range(len(SHF_LEV_DIS['mean'][0]))]
+    print('SHF better than MRU - ', np.mean(excellent_val))
+    excellent_val = [SPF_LEV_DIS['mean'][0][i] - SHF_LEV_DIS['mean'][0][i] for i in range(len(SPF_LEV_DIS['mean'][0]))]
+    print('SPF better than SHF - ', np.mean(excellent_val))
+    print("SHF - {:4f} LLF - {:4f} SPF - {:4f}".format(np.mean(SHF_LEV_DIS['mean'][0]),
+                                                       np.mean(MRU_LEV_DIS['mean'][0]),
+                                                       np.mean(SPF_LEV_DIS['mean'][0])))
+
+    plot_style()
+    plt.errorbar(x, SHF_LEV_DIS['mean'][0], yerr=[shf_err_neg, shf_err_pos], label='SHF',
+                 color='#4472C4', ls='-', lw=0.5,
+                 marker='o', mec='#4472C4', mfc='#4472C4', mew=0.5, ms=2)
+    plt.errorbar(x, MRU_LEV_DIS['mean'][0], yerr=[mru_err_neg, mru_err_pos], label='LLF',
+                 color='#C55A11', ls='-', lw=0.5,
+                 marker='o', mec='#C55A11', mfc='#C55A11', mew=0.5, ms=2)
+    plt.errorbar(x, SPF_LEV_DIS['mean'][0], yerr=[spf_err_neg, spf_err_pos], label='SPF',
+                 color='#FFC000', ls='-', lw=0.5,
+                 marker='o', mec='#FFC000', mfc='#FFC000', mew=0.5, ms=2)
+    plt.xlabel('Workload')
+    plt.ylabel('Level deviation')
+    plt.xticks([0, 0.2, 0.4, 0.6, 0.8, 1])
+    plt.yticks(rotation='vertical')
+    plt.tight_layout()
+    plt.legend()
+    plt.grid(True, ls=':', lw=0.5, c='#d5d6d8')
+    plt.show()
+
+
 def plot_algorithm_runtime():
     pass
+
+
+
 
 
 def plot_style():
