@@ -22,5 +22,5 @@ class Input:
         return list
 
     def get_transceivers(self, cfg: ConfigParser, path=''):
-        # Acquire the set of optical modules.
+        # Convert the data in the configuration file to Transceiver and save it in the dictionary.
         return dict
