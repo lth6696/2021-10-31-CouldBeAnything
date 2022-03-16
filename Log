@@ -1,0 +1,55 @@
+2022-03-16 10:57:36,621 - INFO - Read the configuration file ../config/small/config.ini.
+2022-03-16 10:57:36,622 - INFO - Read the configuration file ../config/model/switch.ini.
+2022-03-16 10:57:36,622 - INFO - Initialize switch S5850-24S2Q
+2022-03-16 10:57:36,622 - INFO - Read the configuration file ../config/model/switch.ini.
+2022-03-16 10:57:36,622 - INFO - Initialize switch S5850-24S2Q
+2022-03-16 10:57:36,623 - INFO - Read the configuration file ../config/model/switch.ini.
+2022-03-16 10:57:36,623 - INFO - Initialize switch S5850-24S2Q
+2022-03-16 10:57:36,623 - INFO - Read the configuration file ../config/model/switch.ini.
+2022-03-16 10:57:36,623 - INFO - Initialize switch S5850-24S2Q
+2022-03-16 10:57:36,624 - INFO - Read the configuration file ../config/model/switch.ini.
+2022-03-16 10:57:36,624 - INFO - Initialize switch S5850-24S2Q
+2022-03-16 10:57:36,624 - INFO - Read the configuration file ../config/model/switch.ini.
+2022-03-16 10:57:36,624 - INFO - Initialize switch S5850-32S2Q
+2022-03-16 10:57:36,625 - INFO - Read the configuration file ../config/model/switch.ini.
+2022-03-16 10:57:36,626 - INFO - Initialize switch S5850-32S2Q
+2022-03-16 10:57:36,627 - INFO - Read the configuration file ../config/model/switch.ini.
+2022-03-16 10:57:36,627 - INFO - Initialize switch S5850-32S2Q
+2022-03-16 10:57:36,628 - INFO - Read the configuration file ../config/model/switch.ini.
+2022-03-16 10:57:36,628 - INFO - Initialize switch S5850-32S2Q
+2022-03-16 10:57:36,629 - INFO - Read the configuration file ../config/model/switch.ini.
+2022-03-16 10:57:36,629 - INFO - Initialize switch S5850-32S2Q
+2022-03-16 10:57:36,630 - INFO - Read the configuration file ../config/model/switch.ini.
+2022-03-16 10:57:36,630 - INFO - Initialize switch S5850-48S6Q
+2022-03-16 10:57:36,632 - INFO - Read the configuration file ../config/model/switch.ini.
+2022-03-16 10:57:36,632 - INFO - Initialize switch S5850-48S6Q
+2022-03-16 10:57:36,633 - INFO - Read the configuration file ../config/model/switch.ini.
+2022-03-16 10:57:36,633 - INFO - Initialize switch S5850-48S6Q
+2022-03-16 10:57:36,634 - INFO - Read the configuration file ../config/model/switch.ini.
+2022-03-16 10:57:36,634 - INFO - Initialize switch S5850-48S6Q
+2022-03-16 10:57:36,635 - INFO - Read the configuration file ../config/model/switch.ini.
+2022-03-16 10:57:36,636 - INFO - Initialize switch S5850-48S6Q
+2022-03-16 10:57:36,637 - INFO - Read the configuration file ../config/model/switch.ini.
+2022-03-16 10:57:36,637 - INFO - Initialize switch S5850-32S2Q
+2022-03-16 10:57:36,638 - INFO - Read the configuration file ../config/model/switch.ini.
+2022-03-16 10:57:36,638 - INFO - Initialize switch S5850-32S2Q
+2022-03-16 10:57:36,640 - INFO - Read the configuration file ../config/model/switch.ini.
+2022-03-16 10:57:36,640 - INFO - Initialize switch S5850-32S2Q
+2022-03-16 10:57:36,641 - INFO - Read the configuration file ../config/model/switch.ini.
+2022-03-16 10:57:36,641 - INFO - Initialize switch S5850-48S6Q
+2022-03-16 10:57:36,642 - INFO - Read the configuration file ../config/model/switch.ini.
+2022-03-16 10:57:36,642 - INFO - Initialize switch S5850-48S6Q
+2022-03-16 10:57:36,644 - INFO - Read the configuration file ../config/model/switch.ini.
+2022-03-16 10:57:36,644 - INFO - Initialize switch S5850-48S6Q
+2022-03-16 10:57:36,644 - INFO - Get leaf layer switches.
+2022-03-16 10:57:36,645 - INFO - Read the configuration file ../config/model/switch.ini.
+2022-03-16 10:57:36,645 - INFO - Initialize switch S8050-20Q4C
+2022-03-16 10:57:36,646 - INFO - Read the configuration file ../config/model/switch.ini.
+2022-03-16 10:57:36,646 - INFO - Initialize switch S8050-20Q4C
+2022-03-16 10:57:36,647 - INFO - Read the configuration file ../config/model/switch.ini.
+2022-03-16 10:57:36,647 - INFO - Initialize switch S8050-20Q4C
+2022-03-16 10:57:36,648 - INFO - Read the configuration file ../config/model/switch.ini.
+2022-03-16 10:57:36,648 - INFO - Initialize switch S8050-20Q4C
+2022-03-16 10:57:36,650 - INFO - Read the configuration file ../config/model/switch.ini.
+2022-03-16 10:57:36,650 - INFO - Initialize switch S160
+2022-03-16 10:57:36,650 - INFO - Get the spine layer switches
