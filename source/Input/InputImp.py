@@ -21,26 +21,52 @@ class InputImp(Input):
             raise Exception("Invalid path {}!".format(path))
         cfg = ConfigParser()
         cfg.read(path)
-        logging.info('Read the topology configuration file.')
+        logging.info('Read the configuration file {}.'.format(path))
         return cfg
 
     def get_spine_layer(self, cfg: ConfigParser):
         if not cfg.has_section('spine'):
             logging.error("Configuration file does not have 'spine' section.")
             raise Exception("Section spine is not included in cfg {}!".format(cfg.sections()))
-        spine_layer_switch = cfg['spine']
-        logging.info('Get the spine layer switches {}'.format(spine_layer_switch))
-        return spine_layer_switch
+        if cfg['spine'].keys() < {'exist', 'idle'}:
+            logging.error("Missing conditions in configuration file {}.".format(cfg['spine'].keys()))
+            raise Exception("Check the configuration file.")
+        spine_layer_switches = {'exist': [], 'idle': []}
+        for i in cfg['spine']['exist'].split(','):
+            switch = self.get_switch(i)
+            switch.nport = switch.nport[1]              # only give the southbound ports
+            switch.bandwidth = switch.bandwidth[1]      # only give the southbound bandwidth
+            switch.cost = 0                             # the cost of existed switch is equal to 0
+            spine_layer_switches['exist'].append(switch)
+        for j in cfg['spine']['idle'].split(','):
+            switch = self.get_switch(j)
+            switch.nport = switch.nport[1]              # only give the southbound ports
+            switch.bandwidth = switch.bandwidth[1]      # only give the southbound bandwidth
+            spine_layer_switches['idle'].append(switch)
+        logging.info('Get the spine layer switches')
+        return spine_layer_switches
 
     def get_leaf_layer(self, cfg: ConfigParser):
         if not cfg.has_section('leaf'):
             logging.error("Configuration file does not have 'leaf' section.")
             raise Exception("Section leaf is not included in cfg {}!".format(cfg.sections()))
-        leaf_layer_switch = []
-        for i in cfg['leaf']['switch']:
-            leaf_layer_switch.append(self.get_switch(i))
-        logging.info('Get the leaf layer switches {}'.format(leaf_layer_switch))
-        return leaf_layer_switch
+        if cfg['leaf'].keys() < {'exist', 'idle'}:
+            logging.error("Missing conditions in configuration file {}.".format(cfg['leaf'].keys()))
+            raise Exception("Check the configuration file.")
+        leaf_layer_switches = {'exist': [], 'idle': []}
+        for i in cfg['leaf']['exist'].split(','):
+            switch = self.get_switch(i)
+            switch.nport = switch.nport[0]              # only give the northbound ports
+            switch.bandwidth = switch.bandwidth[0]      # only give the northbound bandwidth
+            switch.cost = 0                             # the cost of existed switch is equal to 0
+            leaf_layer_switches['exist'].append(switch)
+        for j in cfg['leaf']['idle'].split(','):
+            switch = self.get_switch(j)
+            switch.nport = switch.nport[0]              # only give the northbound ports
+            switch.bandwidth = switch.bandwidth[0]      # only give the northbound bandwidth
+            leaf_layer_switches['idle'].append(switch)
+        logging.info('Get leaf layer switches.')
+        return leaf_layer_switches
 
     def get_speed_list(self, cfg: ConfigParser):
         if not cfg.has_section('speed'):
@@ -64,5 +90,10 @@ class InputImp(Input):
             transceivers[t] = DataModel.Transceiver(cfg[t])
         return transceivers
 
-    def get_switch(self, index):
-        pass
+    def get_switch(self, index: str, path='../config/model/switch.ini'):
+        cfg = self.read_config(path)
+        switch_types = list(cfg.sections())
+        if index not in switch_types:
+            logging.error('Can not locate the switch.')
+            raise Exception("Wrong switch index {}".format(index))
+        return DataModel.Switch(cfg[index])
