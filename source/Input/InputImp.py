@@ -31,18 +31,18 @@ class InputImp(Input):
         if cfg['spine'].keys() < {'exist', 'idle'}:
             logging.error("Missing conditions in configuration file {}.".format(cfg['spine'].keys()))
             raise Exception("Check the configuration file.")
-        spine_layer_switches = {'exist': [], 'idle': []}
+        spine_layer_switches = []
         for i in cfg['spine']['exist'].split(','):
             switch = self.get_switch(i)
             switch.nport = switch.nport[1]              # only give the southbound ports
             switch.bandwidth = switch.bandwidth[1]      # only give the southbound bandwidth
             switch.cost = 0                             # the cost of existed switch is equal to 0
-            spine_layer_switches['exist'].append(switch)
+            spine_layer_switches.append(switch)
         for j in cfg['spine']['idle'].split(','):
             switch = self.get_switch(j)
             switch.nport = switch.nport[1]              # only give the southbound ports
             switch.bandwidth = switch.bandwidth[1]      # only give the southbound bandwidth
-            spine_layer_switches['idle'].append(switch)
+            spine_layer_switches.append(switch)
         logging.info('Get the spine layer switches')
         return spine_layer_switches
 
@@ -53,18 +53,18 @@ class InputImp(Input):
         if cfg['leaf'].keys() < {'exist', 'idle'}:
             logging.error("Missing conditions in configuration file {}.".format(cfg['leaf'].keys()))
             raise Exception("Check the configuration file.")
-        leaf_layer_switches = {'exist': [], 'idle': []}
+        leaf_layer_switches = []
         for i in cfg['leaf']['exist'].split(','):
             switch = self.get_switch(i)
             switch.nport = switch.nport[0]              # only give the northbound ports
             switch.bandwidth = switch.bandwidth[0]      # only give the northbound bandwidth
             switch.cost = 0                             # the cost of existed switch is equal to 0
-            leaf_layer_switches['exist'].append(switch)
+            leaf_layer_switches.append(switch)
         for j in cfg['leaf']['idle'].split(','):
             switch = self.get_switch(j)
             switch.nport = switch.nport[0]              # only give the northbound ports
             switch.bandwidth = switch.bandwidth[0]      # only give the northbound bandwidth
-            leaf_layer_switches['idle'].append(switch)
+            leaf_layer_switches.append(switch)
         logging.info('Get leaf layer switches.')
         return leaf_layer_switches
 
@@ -74,7 +74,7 @@ class InputImp(Input):
             raise Exception("Section speed is not included in cfg {}!".format(cfg.sections()))
         speed_list = cfg['speed']['speed']
         logging.info('Get the list of speed {}'.format(speed_list))
-        return speed_list
+        return speed_list.split(',')
 
     def get_transceivers(self, cfg: ConfigParser = None, path=''):
         if cfg:

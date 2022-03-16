@@ -12,7 +12,7 @@ class Algorithm:
         s - speed list
         t - target bandwidth
 
-        :return: PulpModel
+        :return: prob
         """
         return None
 
