@@ -2,8 +2,16 @@ import os
 import logging
 import networkx as nx
 import numpy as np
+import pandas
+import random
 
 from .InputApi import Input
+
+
+class Service:
+    def __init__(self, bandwidth, security):
+        self.bandwidth = bandwidth
+        self.security = security
 
 
 class InputImp(Input):
@@ -39,5 +47,25 @@ class InputImp(Input):
         logging.info('Successfully generate the adjacency matrix.')
         return adj_matrix
 
-    def generate_traffic_matrix(self, nodes: int):
+    def generate_traffic_matrix(self, nodes: list, nconn: int = 1, nbandwdith: float = 0.0):
+        if not nodes:
+            logging.error('InputImp - generate_traffic_matrix - args is empty.')
+            raise Exception('Empty args')
+        services = [Service(5, 1),
+                    Service(1.5, 1),
+                    Service(4, 2),
+                    Service(12.5, 2),
+                    Service(18, 2),
+                    Service(12.5, 3),
+                    Service(1.5, 3)]
+        traffic_matrix = [[[] for _ in nodes] for _ in nodes]
+        row = col = len(nodes)
+        # print(pandas.DataFrame(traffic_matrix))
+
+        for r in range(row):
+            for c in range(col):
+                for _ in range(nconn):
+                    index = random.randint(0, len(services)-1)
+                    traffic_matrix[r][c].append(services[index])
+        # print(pandas.DataFrame(traffic_matrix))
         return None

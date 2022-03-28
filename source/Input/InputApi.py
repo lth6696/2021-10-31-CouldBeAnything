@@ -18,6 +18,28 @@ class Input:
         "Convert the topology to an adjacency matrix."
         return np.ndarray
 
-    def generate_traffic_matrix(self, nodes: int):
-        "Generate one traffic matrix."
+    def generate_traffic_matrix(self, nodes: list, nconn: int = 0, nbandwdith: float = 0.0):
+        """
+        Generate one traffic matrix.
+        nconn: The number of connections between source and sink nodes.
+        If "nconn" is default value, a random number connections will be generated.
+        Minimum bandwidth requirements for end-user services:
+        +---------+-----------+----------+
+        | Service | Bandwidth | Security |
+        +---------+-----------+----------+
+        |   VoIP  |     5     |     1    |
+        +---------+-----------+----------+
+        |   SSH   |    1.5    |     1    |
+        +---------+-----------+----------+
+        |  Video  |     4     |     2    |
+        +---------+-----------+----------+
+        |   IPTV  |    12.5   |     2    |
+        +---------+-----------+----------+
+        |  Cloud  |    18     |     2    |
+        +---------+-----------+----------+
+        |  Live   |    12.5   |     3    |
+        +---------+-----------+----------+
+        |  Gaming |     1.5   |     3    |
+        +---------+-----------+----------+
+        """
         return np.ndarray
