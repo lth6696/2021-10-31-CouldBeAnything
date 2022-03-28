@@ -42,4 +42,4 @@ class Input:
         |  Gaming |     1.5   |     3    |
         +---------+-----------+----------+
         """
-        return np.ndarray
+        return list

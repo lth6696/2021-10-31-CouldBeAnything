@@ -47,6 +47,41 @@ class InputImp(Input):
         logging.info('Successfully generate the adjacency matrix.')
         return adj_matrix
 
+    def generate_lightpath_adjacency_matrix(self, adj_matrix, nlp=4):
+        if type(adj_matrix) != np.ndarray:
+            logging.error('InputImp - generate_lightpath_adjacency_matrix - Got wrong type.')
+            raise Exception('Input type error.')
+        row, col = adj_matrix.shape
+        for i in range(row):
+            for j in range(col):
+                adj_matrix[i][j] = adj_matrix[i][j] * random.randint(1, nlp)
+        return adj_matrix
+
+    def generate_lightpath_level_matrix(self, adj_matrix, levels: list):
+        if not levels:
+            logging.error('InputImp - generate_lightpath_level_matrix - Got invalid input.')
+            raise Exception('Invalid input.')
+        row, col = adj_matrix.shape
+        level_matrix = [
+            [
+                [
+                    levels[random.randint(0, len(levels) - 1)] for _ in range(adj_matrix[i][j])
+                ] for j in range(col)
+            ] for i in range(row)
+        ]
+        return level_matrix
+
+    def generate_lightpath_bandwidth(self, adj_matrix, bandwidth):
+        row, col = adj_matrix.shape
+        bandwidth_matrix = [
+            [
+                [
+                    bandwidth for _ in range(adj_matrix[i][j])
+                ] for j in range(col)
+            ] for i in range(row)
+        ]
+        return bandwidth_matrix
+
     def generate_traffic_matrix(self, nodes: list, nconn: int = 1, nbandwdith: float = 0.0):
         if not nodes:
             logging.error('InputImp - generate_traffic_matrix - args is empty.')
@@ -68,4 +103,4 @@ class InputImp(Input):
                     index = random.randint(0, len(services)-1)
                     traffic_matrix[r][c].append(services[index])
         # print(pandas.DataFrame(traffic_matrix))
-        return None
+        return traffic_matrix
