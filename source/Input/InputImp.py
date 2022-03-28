@@ -99,6 +99,9 @@ class InputImp(Input):
 
         for r in range(row):
             for c in range(col):
+                if r == c:
+                    traffic_matrix[r][c].append(Service(0, 0))
+                    continue
                 for _ in range(nconn):
                     index = random.randint(0, len(services)-1)
                     traffic_matrix[r][c].append(services[index])

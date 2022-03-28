@@ -8,7 +8,6 @@ class IntegerLinearProgram(Algorithm):
     def __init__(self):
         Algorithm.__init__(self)
 
-
     def run(self, adj_matrix, level_matrix, bandwidth_matrix, traffic_matrix):
         prob = LpProblem("ServiceMapping", LpMaximize)
         solver = getSolver('CPLEX_CMD', timeLimit=10)
@@ -94,6 +93,7 @@ class IntegerLinearProgram(Algorithm):
                         ]) == 0
                 )
 
+        # todo bandwidth and level matrix is not defined?????
         # maximum resource constraint
         for i in nodes:
             for j in nodes:
@@ -101,12 +101,12 @@ class IntegerLinearProgram(Algorithm):
                     for t in range(adj_matrix[i][j]):
                         prob += (
                                 lpSum([Lamda[s][d][i][j][t] * traffic_matrix[s][d][0].bandwidth for s in nodes for d in nodes]) <=
-                                bandwidth_matrix[i][j] * 1 / (level_matrix[i][j][t] + 1)
+                                bandwidth_matrix[i][j][t] / (level_matrix[i][j][t] + 1)
                         )
                         prob += (
-                                lpSum(
-                                    [Lamda[s][d][i][j][t] * traffic_matrix[s][d][0].bandwidth * traffic_matrix[s][d][1].security for s in nodes for d in nodes]) <=
-                                bandwidth_matrix[i][j] * level_matrix[i][j][t] / (level_matrix[i][j][t] + 1)
+                                lpSum([Lamda[s][d][i][j][t] * traffic_matrix[s][d][0].bandwidth * traffic_matrix[s][d][
+                                    0].security for s in nodes for d in nodes]) <=
+                                bandwidth_matrix[i][j][t] * level_matrix[i][j][t] / (level_matrix[i][j][t] + 1)
                         )
 
         for s in nodes:
@@ -114,12 +114,12 @@ class IntegerLinearProgram(Algorithm):
                 prob += (
                         lpSum([
                             lpSum([Lamda[s][d][s][j][t] for t in range(adj_matrix[s][j])]) for j in nodes
-                        ]) <= traffic_matrix[s][d][0]
+                        ]) <= traffic_matrix[s][d][0].bandwidth
                 )
                 prob += (
                         lpSum([
                             lpSum([Lamda[s][d][i][d][t] for t in range(adj_matrix[i][d])]) for i in nodes
-                        ]) <= traffic_matrix[s][d][0]
+                        ]) <= traffic_matrix[s][d][0].bandwidth
                 )
 
         # level constraints
@@ -134,6 +134,6 @@ class IntegerLinearProgram(Algorithm):
                                 )
 
         # The problem is solved using PuLP's choice of Solver
-        prob.solve()
+        prob.solve(solver=solver)
 
         logging.info("Status:{}".format(LpStatus[prob.status]))
