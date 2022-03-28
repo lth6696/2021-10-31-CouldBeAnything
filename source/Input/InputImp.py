@@ -88,11 +88,11 @@ class InputImp(Input):
             raise Exception('Empty args')
         services = [Service(5, 1),
                     Service(1.5, 1),
-                    Service(4, 2),
-                    Service(12.5, 2),
-                    Service(18, 2),
-                    Service(12.5, 3),
-                    Service(1.5, 3)]
+                    Service(4, 0.5),
+                    Service(12.5, 0.5),
+                    Service(18, 0.5),
+                    Service(12.5, 0.1),
+                    Service(1.5, 0.1)]
         traffic_matrix = [[[] for _ in nodes] for _ in nodes]
         row = col = len(nodes)
         # print(pandas.DataFrame(traffic_matrix))

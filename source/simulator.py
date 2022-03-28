@@ -1,4 +1,5 @@
 import pandas as pd
+
 pd.set_option('display.max_columns', 100)
 pd.set_option('display.width', 1000)
 
@@ -17,4 +18,4 @@ if __name__ == '__main__':
     lp_level_matrix = input.generate_lightpath_level_matrix(lp_adj_matrix, [1, 2, 3])
     bandwidth_matrix = input.generate_lightpath_bandwidth(lp_adj_matrix, LightPathBandwidth)
     traffic_matrix = input.generate_traffic_matrix(nodes=[1, 2, 3])
-    res = IntegerLinearProgram().run(lp_adj_matrix)
+    res = IntegerLinearProgram().run(lp_adj_matrix, lp_level_matrix, bandwidth_matrix, traffic_matrix)

@@ -9,14 +9,11 @@ class IntegerLinearProgram(Algorithm):
         Algorithm.__init__(self)
 
 
-    def run(self, adj_matrix, traffic_matrix):
+    def run(self, adj_matrix, level_matrix, bandwidth_matrix, traffic_matrix):
         prob = LpProblem("ServiceMapping", LpMaximize)
         solver = getSolver('CPLEX_CMD', timeLimit=10)
 
         row, col = adj_matrix.shape
-        if row != col:
-            logging.error('IntegerLinearProgram - run - Invalid adj_matrix.')
-            return False
         nodes = [i for i in range(row)]
 
         # Variables
@@ -103,15 +100,13 @@ class IntegerLinearProgram(Algorithm):
                 if adj_matrix[i][j]:
                     for t in range(adj_matrix[i][j]):
                         prob += (
-                                lpSum([Lamda[s][d][i][j][t] * traffic_matrix[s][d][0] for s in nodes for d in
-                                       nodes]) <=
-                                MaxLightpathRes[i][j] * 1 / (adj_weight[i][j][t] + 1)
+                                lpSum([Lamda[s][d][i][j][t] * traffic_matrix[s][d][0].bandwidth for s in nodes for d in nodes]) <=
+                                bandwidth_matrix[i][j] * 1 / (level_matrix[i][j][t] + 1)
                         )
                         prob += (
                                 lpSum(
-                                    [Lamda[s][d][i][j][t] * traffic_matrix[s][d][0] * traffic_matrix[s][d][1] for s
-                                     in nodes for d in nodes]) <=
-                                MaxLightpathRes[i][j] * adj_weight[i][j][t] / (adj_weight[i][j][t] + 1)
+                                    [Lamda[s][d][i][j][t] * traffic_matrix[s][d][0].bandwidth * traffic_matrix[s][d][1].security for s in nodes for d in nodes]) <=
+                                bandwidth_matrix[i][j] * level_matrix[i][j][t] / (level_matrix[i][j][t] + 1)
                         )
 
         for s in nodes:
@@ -135,7 +130,7 @@ class IntegerLinearProgram(Algorithm):
                         for t in range(adj_matrix[i][j]):
                             if traffic_matrix[s][d][1] > 0:
                                 prob += (
-                                        traffic_matrix[s][d][1] / adj_weight[i][j][t] >= Lamda[s][d][i][j][t]
+                                        traffic_matrix[s][d][1] / level_matrix[i][j][t] >= Lamda[s][d][i][j][t]
                                 )
 
         # The problem is solved using PuLP's choice of Solver
