@@ -5,7 +5,7 @@ import numpy as np
 import pandas
 import random
 
-from .InputApi import Input
+from source.Input.InputApi import Input
 
 
 class Service:
@@ -65,7 +65,7 @@ class InputImp(Input):
         level_matrix = [
             [
                 [
-                    levels[random.randint(0, len(levels) - 1)] for _ in range(adj_matrix[i][j])
+                    random.choice(levels) for _ in range(adj_matrix[i][j])
                 ] for j in range(col)
             ] for i in range(row)
         ]
@@ -86,13 +86,6 @@ class InputImp(Input):
         if not nodes:
             logging.error('InputImp - generate_traffic_matrix - args is empty.')
             raise Exception('Empty args')
-        services = [Service(5, 1),
-                    Service(1.5, 1),
-                    Service(4, 0.5),
-                    Service(12.5, 0.5),
-                    Service(18, 0.5),
-                    Service(12.5, 0.1),
-                    Service(1.5, 0.1)]
         traffic_matrix = [[[] for _ in nodes] for _ in nodes]
         row = col = len(nodes)
         # print(pandas.DataFrame(traffic_matrix))
@@ -100,10 +93,11 @@ class InputImp(Input):
         for r in range(row):
             for c in range(col):
                 if r == c:
-                    traffic_matrix[r][c].append(Service(0, 0))
+                    # traffic_matrix[r][c].append(Service(0, 0))
                     continue
-                for _ in range(nconn):
-                    index = random.randint(0, len(services)-1)
-                    traffic_matrix[r][c].append(services[index])
-        # print(pandas.DataFrame(traffic_matrix))
+                for _ in range(random.randint(1, nconn)):
+                    traffic_matrix[r][c].append(Service(np.random.poisson(lam=6), random.randint(1, 3)))
+        a = [[len(traffic_matrix[s][d]) for d in range(row)] for s in range(row)]
+        print(pandas.DataFrame(a))
+        print(sum([sum(r) for r in a]))
         return traffic_matrix

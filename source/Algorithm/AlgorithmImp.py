@@ -18,122 +18,114 @@ class IntegerLinearProgram(Algorithm):
         # Variables
         Lamda = []  # list structure, L[src][dst][i][j][t]
         for s in nodes:
-            temp_src = []
+            tempS = []
             for d in nodes:
-                temp_dst = []
-                for i in nodes:
-                    temp_i = []
-                    for j in nodes:
-                        temp_j = []
-                        if adj_matrix[i][j]:
+                tempD = []
+                for k in range(len(traffic_matrix[s][d])):
+                    tempK = []
+                    for i in nodes:
+                        tempI = []
+                        for j in nodes:
+                            tempJ = []
                             for t in range(adj_matrix[i][j]):
-                                temp_j.append(LpVariable("Lamda_{}_{}_{}_{}_{}".format(s, d, i, j, t),
-                                                         lowBound=0,
-                                                         upBound=1,
-                                                         cat=LpInteger))
-                        else:
-                            temp_j.append(0)
-                        temp_i.append(temp_j)
-                    temp_dst.append(temp_i)
-                temp_src.append(temp_dst)
-            Lamda.append(temp_src)
+                                # print(s, d, k, i, j, t)
+                                var = LpVariable('L_{}_{}_{}_{}_{}_{}'.format(s, d, k, i, j, t),
+                                                 lowBound=0,
+                                                 upBound=1,
+                                                 cat=LpInteger)
+                                tempJ.append(var)
+                            tempI.append(tempJ)
+                        tempK.append(tempI)
+                    tempD.append(tempK)
+                tempS.append(tempD)
+            Lamda.append(tempS)
 
         S = []  # list structure, S[src][dst].
-        for s in range(row):
+        for s in nodes:
             temp_src = []
-            for d in range(row):
-                temp_src.append(LpVariable("Suc_{}_{}".format(s, d),
-                                           lowBound=0, upBound=1, cat=LpInteger))
+            for d in nodes:
+                tempD = []
+                for k in range(len(traffic_matrix[s][d])):
+                    tempD.append(LpVariable("Suc_{}_{}_{}".format(s, d, k),
+                                               lowBound=0, upBound=1, cat=LpInteger))
+                temp_src.append(tempD)
             S.append(temp_src)
 
         # Objective
         # The objective function is added to 'prob' first
         prob += (
-            lpSum([S[s][d] for s in range(row) for d in range(row)])
+            lpSum([S[s][d][k] for s in nodes for d in nodes for k in range(len(traffic_matrix[s][d]))])
         )
 
         # Constraints
-        # continuity constraint
+        # continuity
         for s in nodes:
             for d in nodes:
-                prob += (
-                        lpSum([
-                            lpSum([Lamda[s][d][s][j][t] for t in range(adj_matrix[s][j])]) for j in nodes if
-                            adj_matrix[s][j]
-                        ]) == S[s][d]
-                )
-                prob += (
-                        lpSum([
-                            lpSum([Lamda[s][d][i][d][t] for t in range(adj_matrix[i][d])]) for i in nodes if
-                            adj_matrix[i][d]
-                        ]) == S[s][d]
-                )
-                for k in nodes:
-                    if k != s and k != d:
-                        prob += (
-                                lpSum([
-                                    lpSum([Lamda[s][d][i][k][t] for t in range(adj_matrix[i][k])]) for i in nodes if
-                                    adj_matrix[i][k]
-                                ]) ==
-                                lpSum([
-                                    lpSum([Lamda[s][d][k][j][t] for t in range(adj_matrix[k][j])]) for j in nodes if
-                                    adj_matrix[k][j]
-                                ])
-                        )
-                prob += (
-                        lpSum([
-                            lpSum([Lamda[s][d][i][s][t] for t in range(adj_matrix[i][s])]) for i in nodes if
-                            adj_matrix[i][s]
-                        ]) == 0
-                )
-                prob += (
-                        lpSum([
-                            lpSum([Lamda[s][d][d][j][t] for t in range(adj_matrix[d][j])]) for j in nodes if
-                            adj_matrix[d][j]
-                        ]) == 0
-                )
+                for k in range(len(traffic_matrix[s][d])):
+                    prob += (
+                        lpSum([Lamda[s][d][k][s][j][t] for j in nodes for t in range(adj_matrix[s][j])])
+                        == S[s][d][k]
+                    )
+                    prob += (
+                        lpSum([Lamda[s][d][k][i][d][t] for i in nodes for t in range(adj_matrix[i][d])])
+                        == S[s][d][k]
+                    )
+                    prob += (
+                        lpSum([Lamda[s][d][k][i][s][t] for i in nodes for t in range(adj_matrix[i][s])])
+                        == 0
+                    )
+                    prob += (
+                        lpSum([Lamda[s][d][k][d][j][t] for j in nodes for t in range(adj_matrix[d][j])])
+                        == 0
+                    )
 
-        # todo bandwidth and level matrix is not defined?????
-        # maximum resource constraint
+        for s in nodes:
+            for d in nodes:
+                for k in range(len(traffic_matrix[s][d])):
+                    for m in nodes:
+                        if m == s or m == d:
+                            continue
+                        prob += (
+                            lpSum([Lamda[s][d][k][i][m][t] for i in nodes for t in range(adj_matrix[i][m])])
+                            == lpSum([Lamda[s][d][k][m][j][t] for j in nodes for t in range(adj_matrix[m][j])])
+                        )
+
+        # bandwidth
         for i in nodes:
             for j in nodes:
-                if adj_matrix[i][j]:
-                    for t in range(adj_matrix[i][j]):
-                        prob += (
-                                lpSum([Lamda[s][d][i][j][t] * traffic_matrix[s][d][0].bandwidth for s in nodes for d in nodes]) <=
-                                bandwidth_matrix[i][j][t] / (level_matrix[i][j][t] + 1)
-                        )
-                        prob += (
-                                lpSum([Lamda[s][d][i][j][t] * traffic_matrix[s][d][0].bandwidth * traffic_matrix[s][d][
-                                    0].security for s in nodes for d in nodes]) <=
-                                bandwidth_matrix[i][j][t] * level_matrix[i][j][t] / (level_matrix[i][j][t] + 1)
-                        )
+                for t in range(adj_matrix[i][j]):
+                    prob += (
+                        lpSum([Lamda[s][d][k][i][j][t] * traffic_matrix[s][d][k].bandwidth for s in nodes for d in nodes for k in range(len(traffic_matrix[s][d]))])
+                        <= bandwidth_matrix[i][j][t]
+                    )
 
         for s in nodes:
             for d in nodes:
-                prob += (
-                        lpSum([
-                            lpSum([Lamda[s][d][s][j][t] for t in range(adj_matrix[s][j])]) for j in nodes
-                        ]) <= traffic_matrix[s][d][0].bandwidth
-                )
-                prob += (
-                        lpSum([
-                            lpSum([Lamda[s][d][i][d][t] for t in range(adj_matrix[i][d])]) for i in nodes
-                        ]) <= traffic_matrix[s][d][0].bandwidth
-                )
+                for k in range(len(traffic_matrix[s][d])):
+                    prob += (
+                        lpSum([Lamda[s][d][k][s][j][t] for j in nodes for t in range(adj_matrix[s][j])])
+                        <= traffic_matrix[s][d][k].bandwidth
+                    )
+                    prob += (
+                        lpSum([Lamda[s][d][k][i][d][t] for i in nodes for t in range(adj_matrix[i][d])])
+                        <= traffic_matrix[s][d][k].bandwidth
+                    )
 
-        # level constraints
+        # level
         for s in nodes:
             for d in nodes:
-                for i in nodes:
-                    for j in nodes:
-                        for t in range(adj_matrix[i][j]):
-                            if traffic_matrix[s][d][1] > 0:
+                for k in range(len(traffic_matrix[s][d])):
+                    for i in nodes:
+                        for j in nodes:
+                            for t in range(adj_matrix[i][j]):
                                 prob += (
-                                        traffic_matrix[s][d][1] / level_matrix[i][j][t] >= Lamda[s][d][i][j][t]
+                                    traffic_matrix[s][d][k].security / level_matrix[i][j][t] >= Lamda[s][d][k][i][j][t]
                                 )
 
         # The problem is solved using PuLP's choice of Solver
         prob.solve(solver=solver)
+        for v in prob.variables():
+            if v.varValue == 1:
+                print("{} = {}".format(v.name, v.varValue))
 
         logging.info("Status:{}".format(LpStatus[prob.status]))
