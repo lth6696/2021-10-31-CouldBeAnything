@@ -1,4 +1,6 @@
 import pandas as pd
+import logging
+import logging.config
 
 pd.set_option('display.max_columns', 100)
 pd.set_option('display.width', 1000)
@@ -11,6 +13,7 @@ LightPathBandwidth = 100 * BaseLine     # 100Gbps
 
 
 if __name__ == '__main__':
+    logging.config.fileConfig('logconfig.ini')
     input = Input.InputImp.InputImp()
     G = input.generate_topology(path='../graphml/nsfnet/nsfnet.graphml')
     adj_matrix = input.generate_adjacency_martix(G)

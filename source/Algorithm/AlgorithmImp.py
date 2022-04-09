@@ -124,8 +124,9 @@ class IntegerLinearProgram(Algorithm):
 
         # The problem is solved using PuLP's choice of Solver
         prob.solve(solver=solver)
-        for v in prob.variables():
-            if v.varValue == 1:
-                print("{} = {}".format(v.name, v.varValue))
+        # for v in prob.variables():
+        #     if v.varValue == 1:
+        #         print("{} = {}".format(v.name, v.varValue))
 
         logging.info("Status:{}".format(LpStatus[prob.status]))
+        return prob
