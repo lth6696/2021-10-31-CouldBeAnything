@@ -123,9 +123,12 @@ class IntegerLinearProgram(Algorithm):
                                 )
                                 # extra condition to limit the level-cross, which can be ignore
                                 # prob += (
-                                #     traffic_matrix[s][d][k].security / level_matrix[i][j][t] <=
+                                #     Lamda[s][d][k][i][j][t] * traffic_matrix[s][d][k].security / level_matrix[i][j][t] <=
                                 #     (Lamda[s][d][k][i][j][t] + 1e2) / 1e2
                                 # )
+                                prob += (
+                                    (traffic_matrix[s][d][k].security / level_matrix[i][j][t] - 1 / 1e4) * Lamda[s][d][k][i][j][t] <= 1
+                                )
 
         # The problem is solved using PuLP's choice of Solver
         prob.solve(solver=solver)
