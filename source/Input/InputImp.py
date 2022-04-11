@@ -52,6 +52,7 @@ class InputImp(Input):
             logging.error('InputImp - generate_lightpath_adjacency_matrix - Got wrong type.')
             raise Exception('Input type error.')
         row, col = adj_matrix.shape
+        np.random.seed(0)
         for i in range(row):
             for j in range(col):
                 adj_matrix[i][j] = adj_matrix[i][j] * np.random.uniform(1, nlp+1, 1)
@@ -61,6 +62,7 @@ class InputImp(Input):
         if not levels:
             logging.error('InputImp - generate_lightpath_level_matrix - Got invalid input.')
             raise Exception('Invalid input.')
+        np.random.seed(6)
         row, col = adj_matrix.shape
         level_matrix = [
             [
@@ -90,6 +92,7 @@ class InputImp(Input):
         row = col = len(nodes)
         # print(pandas.DataFrame(traffic_matrix))
 
+        np.random.seed(8)
         for r in range(row):
             for c in range(col):
                 if r == c:
@@ -100,5 +103,5 @@ class InputImp(Input):
                     traffic_matrix[r][c].append(Service(np.random.poisson(lam=6), levels[np.random.randint(0, len(levels))]))
 
         throughput = sum([k.bandwidth for row in traffic_matrix for col in row for k in col])
-        print("Total throughput is {} Gbps.".format(throughput))
+        logging.info('InputImp - generate_traffic_matrix - The total throughput is {} Gbps.'.format(throughput))
         return traffic_matrix

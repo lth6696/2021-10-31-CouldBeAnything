@@ -121,12 +121,30 @@ class IntegerLinearProgram(Algorithm):
                                 prob += (
                                     traffic_matrix[s][d][k].security / level_matrix[i][j][t] >= Lamda[s][d][k][i][j][t]
                                 )
+                                # extra condition to limit the level-cross, which can be ignore
+                                # prob += (
+                                #     traffic_matrix[s][d][k].security / level_matrix[i][j][t] <=
+                                #     (Lamda[s][d][k][i][j][t] + 1e2) / 1e2
+                                # )
 
         # The problem is solved using PuLP's choice of Solver
         prob.solve(solver=solver)
-        # for v in prob.variables():
-        #     if v.varValue == 1:
-        #         print("{} = {}".format(v.name, v.varValue))
+
+        NSuc = 0
+        NTaf = 0
+        NPut = 0
+        for s in nodes:
+            for d in nodes:
+                for k, var in enumerate(S[s][d]):
+                    if var.value() == 1.0:
+                        NSuc += 1
+                        NPut += traffic_matrix[s][d][k].bandwidth
+                NTaf += len(traffic_matrix[s][d])
 
         logging.info("Status:{}".format(LpStatus[prob.status]))
+        logging.info('IntegerLinearProgram - run - The successfully allocate bandwidth is {} Gbps.'.format(NPut))
+        logging.info('IntegerLinearProgram - run - The number of request is {}.'.format(NTaf))
+        logging.info('IntegerLinearProgram - run - We successfully map {}.'.format(NSuc))
+        logging.info('IntegerLinearProgram - run - The mapping rate is {:2f}'.format(NSuc / NTaf * 100))
+
         return prob

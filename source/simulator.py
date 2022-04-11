@@ -13,9 +13,9 @@ LightPathBandwidth = 100 * BaseLine     # 100Gbps
 
 
 if __name__ == '__main__':
-    NWaveL = 3
-    NConn = 3
-    levels = [1, 2, 3]
+    NWaveL = 4
+    NConn = 2
+    levels = [i+1 for i in range(3)]
 
     logging.config.fileConfig('logconfig.ini')
     input = Input.InputImp.InputImp()
