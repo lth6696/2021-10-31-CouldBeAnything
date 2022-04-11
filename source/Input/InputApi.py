@@ -18,7 +18,7 @@ class Input:
         "Convert the topology to an adjacency matrix."
         return np.ndarray
 
-    def generate_traffic_matrix(self, nodes: list, nconn: int = 0, nbandwdith: float = 0.0):
+    def generate_traffic_matrix(self, nodes: list, levels: list, nconn: int = 0, nbandwdith: float = 0.0):
         """
         Generate one traffic matrix.
         nconn: The number of connections between source and sink nodes.

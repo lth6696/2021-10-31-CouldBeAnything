@@ -54,7 +54,7 @@ class InputImp(Input):
         row, col = adj_matrix.shape
         for i in range(row):
             for j in range(col):
-                adj_matrix[i][j] = adj_matrix[i][j] * random.randint(1, nlp)
+                adj_matrix[i][j] = adj_matrix[i][j] * np.random.uniform(1, nlp+1, 1)
         return adj_matrix
 
     def generate_lightpath_level_matrix(self, adj_matrix, levels: list):
@@ -65,7 +65,7 @@ class InputImp(Input):
         level_matrix = [
             [
                 [
-                    random.choice(levels) for _ in range(adj_matrix[i][j])
+                    levels[np.random.randint(0, len(levels))] for _ in range(adj_matrix[i][j])
                 ] for j in range(col)
             ] for i in range(row)
         ]
@@ -82,7 +82,7 @@ class InputImp(Input):
         ]
         return bandwidth_matrix
 
-    def generate_traffic_matrix(self, nodes: list, nconn: int = 1, nbandwdith: float = 0.0):
+    def generate_traffic_matrix(self, nodes: list, levels: list, nconn: int = 1, nbandwdith: float = 0.0):
         if not nodes:
             logging.error('InputImp - generate_traffic_matrix - args is empty.')
             raise Exception('Empty args')
@@ -95,9 +95,10 @@ class InputImp(Input):
                 if r == c:
                     # traffic_matrix[r][c].append(Service(0, 0))
                     continue
-                for _ in range(random.randint(1, nconn)):
-                    traffic_matrix[r][c].append(Service(np.random.poisson(lam=6), random.randint(1, 3)))
-        a = [[len(traffic_matrix[s][d]) for d in range(row)] for s in range(row)]
-        print(pandas.DataFrame(a))
-        print(sum([sum(r) for r in a]))
+                # for _ in range(random.randint(1, nconn)):
+                for _ in range(nconn):
+                    traffic_matrix[r][c].append(Service(np.random.poisson(lam=6), levels[np.random.randint(0, len(levels))]))
+
+        throughput = sum([k.bandwidth for row in traffic_matrix for col in row for k in col])
+        print("Total throughput is {} Gbps.".format(throughput))
         return traffic_matrix
