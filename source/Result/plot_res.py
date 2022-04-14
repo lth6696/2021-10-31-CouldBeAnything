@@ -149,7 +149,8 @@ def plot_algorithm_runtime():
 
 
 def plot_style():
-    plt.rcParams['figure.figsize'] = (2.2, 1.65)  # figure size in inches
+    # plt.rcParams['figure.figsize'] = (2.2, 1.65)  # figure size in inches
+    plt.rcParams['figure.figsize'] = (3.44, 1.65)
     plt.rcParams['font.family'] = 'serif'
     plt.rcParams['font.serif'] = ['Times New Roman']
     plt.rcParams['font.size'] = 6
