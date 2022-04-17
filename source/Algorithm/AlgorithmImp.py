@@ -1,5 +1,7 @@
 import pulp.pulp
+import networkx as nx
 from pulp import *
+from collections import defaultdict
 
 from .AlgorithmApi import Algorithm
 
@@ -122,10 +124,6 @@ class IntegerLinearProgram(Algorithm):
                                     traffic_matrix[s][d][k].security / level_matrix[i][j][t] >= Lamda[s][d][k][i][j][t]
                                 )
                                 # extra condition to limit the level-cross, which can be ignore
-                                # prob += (
-                                #     Lamda[s][d][k][i][j][t] * traffic_matrix[s][d][k].security / level_matrix[i][j][t] <=
-                                #     (Lamda[s][d][k][i][j][t] + 1e2) / 1e2
-                                # )
                                 prob += (
                                     (traffic_matrix[s][d][k].security / level_matrix[i][j][t] - 1 / 1e4) * Lamda[s][d][k][i][j][t] <= 1
                                 )
@@ -151,3 +149,74 @@ class IntegerLinearProgram(Algorithm):
         logging.info('IntegerLinearProgram - run - The mapping rate is {:2f}'.format(NSuc / NTaf * 100))
 
         return prob
+
+
+class Heuristic(Algorithm):
+    def __init__(self):
+        super(Heuristic, self).__init__()
+
+    def run(self, adj_matrix, level_matrix, bandwidth_matrix, traffic_matrix):
+        STANDARD_BANDWIDTH = 100
+        success_traffic = []
+        blocked_traffic = []
+
+        traffics = defaultdict(list)
+        for src in range(len(traffic_matrix)):
+            for dst in range(len(traffic_matrix[src])):
+                for traffic in traffic_matrix[src][dst]:
+                    traffics[traffic.security].append((src, dst, traffic.bandwidth))
+
+        G = nx.DiGraph()
+        G.add_nodes_from([vertex for vertex in range(len(adj_matrix))])
+        for level in sorted(list(traffics.keys())):
+            # add edges into graph G
+            for start in range(len(adj_matrix)):
+                for end in range(len(adj_matrix[start])):
+                    for t in range(adj_matrix[start][end]):
+                        if level_matrix[start][end][t] > level:
+                            continue
+                        if (start, end) not in G.edges:
+                            G.add_edge(start, end)
+                            G[start][end]['level'] = level_matrix[start][end][t]
+                            G[start][end]['index'] = t
+                            G[start][end]['cost'] = STANDARD_BANDWIDTH / bandwidth_matrix[start][end][t]
+                        if bandwidth_matrix[start][end][t] > STANDARD_BANDWIDTH / G[start][end]['cost']:
+                            G[start][end]['level'] = level_matrix[start][end][t]
+                            G[start][end]['index'] = t
+                            G[start][end]['cost'] = STANDARD_BANDWIDTH / bandwidth_matrix[start][end][t]
+            # map traffic
+            for traffic in traffics[level]:
+                src = traffic[0]
+                dst = traffic[1]
+                bandwidth = traffic[2]
+                try:
+                    path = nx.shortest_path(G, src, dst)
+                except:
+                    blocked_traffic.append(traffic)
+                    continue
+                lightpaths = list(zip(path[:-1], path[1:]))
+                flag = 0
+                # todo 用回溯或者递归的方法，简单
+                for (start, end) in lightpaths:
+                    if STANDARD_BANDWIDTH / G[start][end]['cost'] < bandwidth:
+                        for t in range(adj_matrix[start][end]):
+                            if level_matrix[start][end][t] > level:
+                                continue
+                            if bandwidth_matrix[start][end][t] > STANDARD_BANDWIDTH / G[start][end]['cost']:
+                                G[start][end]['level'] = level_matrix[start][end][t]
+                                G[start][end]['index'] = t
+                                G[start][end]['cost'] = STANDARD_BANDWIDTH / bandwidth_matrix[start][end][t]
+                        if STANDARD_BANDWIDTH / G[start][end]['cost'] < bandwidth:
+                            blocked_traffic.append(traffic)
+                            break
+                    flag += 1
+                if flag == len(lightpaths):
+                    for (start, end) in lightpaths:
+                        index = G[start][end]['index']
+                        # print(start, end, index)
+                        bandwidth_matrix[start][end][index] -= bandwidth
+                        G[start][end]['cost'] = STANDARD_BANDWIDTH / max(bandwidth_matrix[start][end][index], 1e-5)
+                    success_traffic.append(traffic)
+
+        print(len(success_traffic) + len(blocked_traffic))
+        print(len(success_traffic) / (len(success_traffic) + len(blocked_traffic)) * 100)

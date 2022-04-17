@@ -6,7 +6,7 @@ pd.set_option('display.max_columns', 100)
 pd.set_option('display.width', 1000)
 
 import Input
-from Algorithm.AlgorithmImp import IntegerLinearProgram
+from Algorithm.AlgorithmImp import IntegerLinearProgram, Heuristic
 
 BaseLine = 1    # Gbps
 LightPathBandwidth = 100 * BaseLine     # 100Gbps
@@ -27,4 +27,5 @@ if __name__ == '__main__':
     bandwidth_matrix = input.generate_lightpath_bandwidth(lp_adj_matrix, LightPathBandwidth)
     traffic_matrix = input.generate_traffic_matrix(nodes=[i for i in range(nodes)], levels=levels, nconn=NConn)
 
-    res = IntegerLinearProgram().run(lp_adj_matrix, lp_level_matrix, bandwidth_matrix, traffic_matrix)
+    # res = IntegerLinearProgram().run(lp_adj_matrix, lp_level_matrix, bandwidth_matrix, traffic_matrix)
+    res = Heuristic().run(lp_adj_matrix, lp_level_matrix, bandwidth_matrix, traffic_matrix)
