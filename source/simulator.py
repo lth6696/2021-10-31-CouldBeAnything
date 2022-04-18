@@ -1,6 +1,7 @@
 import pandas as pd
 import logging
 import logging.config
+import time
 
 pd.set_option('display.max_columns', 100)
 pd.set_option('display.width', 1000)
@@ -15,7 +16,7 @@ LightPathBandwidth = 100 * BaseLine     # 100Gbps
 if __name__ == '__main__':
     NWaveL = 4
     NConn = 4
-    levels = [i+1 for i in range(5)]
+    levels = [i+1 for i in range(1)]
 
     logging.config.fileConfig('logconfig.ini')
     input = Input.InputImp.InputImp()
@@ -27,5 +28,8 @@ if __name__ == '__main__':
     bandwidth_matrix = input.generate_lightpath_bandwidth(lp_adj_matrix, LightPathBandwidth)
     traffic_matrix = input.generate_traffic_matrix(nodes=[i for i in range(nodes)], levels=levels, nconn=NConn)
 
+    start = time.time()
     # res = IntegerLinearProgram().run(lp_adj_matrix, lp_level_matrix, bandwidth_matrix, traffic_matrix)
     res = Heuristic().run(lp_adj_matrix, lp_level_matrix, bandwidth_matrix, traffic_matrix)
+    end = time.time()
+    print("RUNING - {}".format(end - start))
