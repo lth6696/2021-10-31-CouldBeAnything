@@ -16,7 +16,7 @@ LightPathBandwidth = 100 * BaseLine     # 100Gbps
 if __name__ == '__main__':
     NWaveL = 4
     NConn = 4
-    levels = [i+1 for i in range(1)]
+    levels = [i+1 for i in range(5)]
 
     logging.config.fileConfig('logconfig.ini')
     input = Input.InputImp.InputImp()
@@ -30,6 +30,6 @@ if __name__ == '__main__':
 
     start = time.time()
     # res = IntegerLinearProgram().run(lp_adj_matrix, lp_level_matrix, bandwidth_matrix, traffic_matrix)
-    res = Heuristic().run(lp_adj_matrix, lp_level_matrix, bandwidth_matrix, traffic_matrix)
+    res = Heuristic().run(lp_adj_matrix, lp_level_matrix, bandwidth_matrix, traffic_matrix, multi_level=False)
     end = time.time()
-    print("RUNING - {}".format(end - start))
+    print("Running time is {}".format(end - start))
