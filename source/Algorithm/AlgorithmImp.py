@@ -202,7 +202,8 @@ class Heuristic(Algorithm):
                         success_traffic[level].append(traffic)
                     else:
                         blocked_traffic[level].append(traffic)
-
+        # todo 安全指标
+        # todo 优化方向
         # for key in blocked_traffic:
         #     print(key)
         #     print(blocked_traffic[key])
