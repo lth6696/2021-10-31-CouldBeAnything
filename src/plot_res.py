@@ -195,11 +195,11 @@ def plot_algorithm_runtime():
 
 
 
-def plot_style():
-    plt.rcParams['figure.figsize'] = (2.2, 1.65)  # figure size in inches
+def plot_style(x=5.51, y=2.24):
+    plt.rcParams['figure.figsize'] = (x, y)  # 2.2, 1.65 figure size in inches
     plt.rcParams['font.family'] = 'serif'
     plt.rcParams['font.serif'] = ['Times New Roman']
-    plt.rcParams['font.size'] = 6
+    plt.rcParams['font.size'] = 10
     plt.rcParams['figure.dpi'] = 300
     plt.rcParams['patch.linewidth'] = 0.5
     plt.rcParams['axes.linewidth'] = 0.5
