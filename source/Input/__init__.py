@@ -1,2 +1,1 @@
-from . import InputApi
-from . import InputImp
+from source.Input import InputImp
