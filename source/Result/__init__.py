@@ -1,1 +1,1 @@
-from . import result
+from source.Result import result

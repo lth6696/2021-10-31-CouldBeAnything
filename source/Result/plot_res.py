@@ -148,9 +148,10 @@ def plot_algorithm_runtime():
     pass
 
 
-def plot_style():
+def plot_style(style='default', size: tuple = None):
+    Style = {'default': (3.44, 1.65), 'full': (2.2, 1.65), 'custom': size}
     # plt.rcParams['figure.figsize'] = (2.2, 1.65)  # figure size in inches
-    plt.rcParams['figure.figsize'] = (3.44, 1.65)
+    plt.rcParams['figure.figsize'] = Style[style]
     plt.rcParams['font.family'] = 'serif'
     plt.rcParams['font.serif'] = ['Times New Roman']
     plt.rcParams['font.size'] = 6

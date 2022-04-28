@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from source.Result.plot_res import plot_style
 
 
-class Result:
+class ResultStorage:
     def __init__(self):
         pass
 

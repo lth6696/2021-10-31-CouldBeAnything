@@ -5,6 +5,9 @@ import numpy as np
 import networkx as nx
 import pandas as pd
 
+pd.set_option('display.max_columns', 100)
+pd.set_option('display.width', 1000)
+
 
 class Traffic(object):
     DefaultValue = -1
@@ -41,6 +44,7 @@ class InputImp(object):
 
     def __init__(self):
         self.MultiDiG = nx.MultiDiGraph()
+        self.req_bandwidth = 0
 
     def _get_customize_topology(self, path):
         if not os.path.exists(path):
@@ -71,21 +75,21 @@ class InputImp(object):
         # 此处使用有向多径图表示节点间连接关系
         self.MultiDiG.add_nodes_from(G.nodes)
         for (origin, sink) in G.edges:
-            # 随机生成并行光路数量，取值范围[1,nw]
-            num_from_origin_to_sink = np.random.randint(1, nw)
+            # 随机生成并行光路数量，取值范围[1,nw+1)
+            num_from_origin_to_sink = np.random.randint(1, nw+1)
             for i in range(num_from_origin_to_sink):
                 self._add_parallel_edge(origin=origin,
                                         sink=sink,
                                         index=i,
-                                        level=np.random.randint(1, nl),
+                                        level=np.random.randint(1, nl+1),
                                         bandwidth=bandwidth)
             # G是无向图，故还需额外添加反向并行光路
-            num_from_sink_to_origin = np.random.randint(1, nw)
+            num_from_sink_to_origin = np.random.randint(1, nw+1)
             for i in range(num_from_sink_to_origin):
                 self._add_parallel_edge(origin=sink,
                                         sink=origin,
                                         index=i,
-                                        level=np.random.randint(1, nl),
+                                        level=np.random.randint(1, nl+1),
                                         bandwidth=bandwidth)
         logging.info('Successfully generate the topology.')
 
@@ -93,9 +97,9 @@ class InputImp(object):
         try:
             adj_matrix = nx.adjacency_matrix(self.MultiDiG).todense()
             logging.info('Successfully generate the adjacency matrix.')
-            return adj_matrix       # return: numpy.matrix
+            return adj_matrix.tolist()       # return: list
         except:
-            return np.matrix([])
+            return []
 
     def get_level_matrix(self):
         nodes = list(self.MultiDiG.nodes)
@@ -112,24 +116,24 @@ class InputImp(object):
         return bandwidth_matrix
 
     def get_traffic_matrix(self, nl: int = 3, nconn: int = 4, lam: int = 6):
-        nodes = list(self.MultiDiG.nodes)
+        nodes = list(map(int, self.MultiDiG.nodes))
         traffic_matrix = [[[] for _ in nodes] for _ in nodes]
-        row = col = len(nodes)
-        # print(pandas.DataFrame(traffic_matrix))
 
         np.random.seed(8)
-        for r in range(row):
-            for c in range(col):
+        for r in nodes:
+            for c in nodes:
                 if r == c:
-                    # traffic_matrix[r][c].append(Service(0, 0))
                     continue
-                # for _ in range(random.randint(1, nconn)):
                 for _ in range(nconn):
+                    bandwidth = np.random.poisson(lam)
                     traffic_matrix[r][c].append(
-                        Traffic(np.random.poisson(lam), levels[np.random.randint(0, len(levels))]))
-
-        throughput = sum([k.bandwidth for row in traffic_matrix for col in row for k in col])
-        logging.info('InputImp - generate_traffic_matrix - The total throughput is {} Gbps.'.format(throughput))
+                        Traffic(src=r,
+                                dst=c,
+                                bandwidth=bandwidth,
+                                security=np.random.randint(1, nl+1))
+                    )
+                    self.req_bandwidth += bandwidth
+        logging.info('InputImp - generate_traffic_matrix - The total throughput is {} Gbps.'.format(self.req_bandwidth))
         return traffic_matrix
 
 
@@ -138,4 +142,5 @@ if __name__ == '__main__':
     t.set_vertex_connection()
     adj = t.get_adjacency_martix()
     level = t.get_level_matrix()
-    bandwidth = t.get_bandwidth_matrix()
+    traffic_matrix = t.get_traffic_matrix()
+    print(t.req_bandwidth)

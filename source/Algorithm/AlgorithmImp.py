@@ -7,17 +7,18 @@ from pulp import *
 from collections import defaultdict
 
 from source.Algorithm.AlgorithmApi import Algorithm
+from source.simulator import LightPathBandwidth
 
 
 class IntegerLinearProgram(Algorithm):
     def __init__(self):
         Algorithm.__init__(self)
 
-    def run(self, adj_matrix, level_matrix, bandwidth_matrix, traffic_matrix):
+    def run(self, adj_matrix, level_matrix, bandwidth_matrix, traffic_matrix, multi_level=True):
         prob = LpProblem("ServiceMapping", LpMaximize)
         solver = getSolver('CPLEX_CMD', timeLimit=10)
 
-        row, col = adj_matrix.shape
+        row, col = len(adj_matrix), len(adj_matrix)
         nodes = [i for i in range(row)]
 
         # Variables
@@ -127,9 +128,10 @@ class IntegerLinearProgram(Algorithm):
                                     traffic_matrix[s][d][k].security / level_matrix[i][j][t] >= Lamda[s][d][k][i][j][t]
                                 )
                                 # extra condition to limit the level-cross, which can be ignore
-                                prob += (
-                                    (traffic_matrix[s][d][k].security / level_matrix[i][j][t] - 1 / 1e4) * Lamda[s][d][k][i][j][t] <= 1
-                                )
+                                if not multi_level:
+                                    prob += (
+                                        (traffic_matrix[s][d][k].security / level_matrix[i][j][t] - 1 / 1e4) * Lamda[s][d][k][i][j][t] <= 1
+                                    )
 
         # The problem is solved using PuLP's choice of Solver
         prob.solve(solver=solver)
@@ -351,7 +353,7 @@ class SuitableLightpathFirst(Algorithm):
 
         self.success_traffic = defaultdict(list)
         self.blocked_traffic = defaultdict(list)
-        self.default = 100
+        self.default = LightPathBandwidth
 
     def simulate(self, adj_matrix, level_matrix, bandwidth_matrix, traffic_matrix, slf=True, multi_level=True):
         for src in range(len(traffic_matrix)):
