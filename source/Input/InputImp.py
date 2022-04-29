@@ -18,6 +18,7 @@ class Traffic(object):
         self.bandwidth = Traffic.DefaultValue
         self.security = Traffic.DefaultValue
         self.blocked = True
+        self.block_reason = '0x00'      # 0x00 - No block; 0x01 - No path; 0x02 - No bandwidth
         self.path = []          # [node1, node2, ...]
         self.lightpath = {}     # {ori: {sin: str, index: int, level: int}, ...}
 

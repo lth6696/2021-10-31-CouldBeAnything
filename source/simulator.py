@@ -2,12 +2,14 @@ import pandas as pd
 import logging
 import logging.config
 from time import time
+import numpy as np
 
 pd.set_option('display.max_columns', 100)
 pd.set_option('display.width', 1000)
 
 from source.Input.InputImp import InputImp
-from source.Result.plot_res import ResultPresentation
+from source.Result.ResultPlot import ResultPresentation
+from source.Result.ResultAnalysis import ResultAnalysisImpl
 from Algorithm.AlgorithmImp import *
 
 BaseLine = 1  # Gbps
@@ -17,7 +19,7 @@ LightPathBandwidth = 100 * BaseLine  # 100Gbps
 def simulate_once():
     NWaveL = 4
     NConn = 4
-    Nlevel = 5
+    Nlevel = 11
 
     input = InputImp()
     input.set_vertex_connection(path="./graphml/nsfnet/nsfnet.graphml", nw=NWaveL, nl=Nlevel,
@@ -25,13 +27,19 @@ def simulate_once():
     traffic_matrix = input.get_traffic_matrix(nl=Nlevel, nconn=NConn)
 
     start = time()
-    SuitableLightpathFirst().simulate(input.MultiDiG, traffic_matrix, slf=True, multi_level=True)
+    result = SuitableLightpathFirst().simulate(input.MultiDiG, traffic_matrix, slf=True, multi_level=True)
     end = time()
+    print(result.traffic_mapping_success_rate)
     print("Running time is {}".format(end - start))
+    result_matrix = ResultAnalysisImpl().analysis_traffic_block_rate_under_different_situation(result)
+    print([np.mean(result_matrix[:][col]) for col in range(len(result_matrix[0]))])
+    return []
+
 
 def simulate_gradient():
     NWaveL = 4
     NConn = 4
+    Nlevel = 3
 
     level_change_res = []
     for Nlevel in range(1, 20):
@@ -58,6 +66,6 @@ def simulate_gradient():
 if __name__ == '__main__':
     logging.config.fileConfig('logconfig.ini')
 
-    level_change_res = simulate_gradient()
-    ResultPresentation().plot_line(level_change_res)
+    level_change_res = simulate_once()
+    # ResultPresentation().plot_line(level_change_res)
 

@@ -1,19 +1,18 @@
 import math
-
 import pandas as pd
 import pulp.pulp
 import networkx as nx
 from pulp import *
 from collections import defaultdict
 
-from source.Algorithm.AlgorithmApi import Algorithm
+from source.Result.ResultAnalysis import Result
 from source.Input.InputImp import Traffic
 from source.simulator import LightPathBandwidth
 
 
-class IntegerLinearProgram(Algorithm):
+class IntegerLinearProgram(object):
     def __init__(self):
-        Algorithm.__init__(self)
+        pass
 
     def run(self, adj_matrix, level_matrix, bandwidth_matrix, traffic_matrix, multi_level=True):
         prob = LpProblem("ServiceMapping", LpMaximize)
@@ -157,9 +156,9 @@ class IntegerLinearProgram(Algorithm):
         return prob
 
 
-class Heuristic(Algorithm):
+class Heuristic(object):
     def __init__(self):
-        super(Heuristic, self).__init__()
+        pass
 
     def run(self, adj_matrix, level_matrix, bandwidth_matrix, traffic_matrix, interval=3, step=0, multi_level=True):
         success_traffic = defaultdict(list)
@@ -348,7 +347,7 @@ class Heuristic(Algorithm):
         print('Success mapping rate is {:.2f}% in total {} traffic.'.format(Nsuc / total * 100, total))
 
 
-class SuitableLightpathFirst(Algorithm):
+class SuitableLightpathFirst():
     def __init__(self):
         super(SuitableLightpathFirst, self).__init__()
 
@@ -357,25 +356,21 @@ class SuitableLightpathFirst(Algorithm):
         self.default = LightPathBandwidth
 
     def simulate(self, MultiDiG: nx.classes.multidigraph.MultiDiGraph, traffic_matrix: list, slf=True, multi_level=True):
+        ntraffic = 0
         for row in traffic_matrix:
             for col in row:
                 for traffic in col:
+                    ntraffic += 1
                     if self._map_service(traffic, MultiDiG, slf):
                         self.success_traffic[traffic.security].append(traffic)
                         traffic.blocked = False
                     else:
                         self.blocked_traffic[traffic.security].append(traffic)
-        # for ori in MultiDiG.nodes:
-        #     for sin in MultiDiG.nodes:
-        #         try:
-        #             print(ori, sin, MultiDiG[ori][sin])
-        #         except:
-        #             continue
         Nsuc = sum([len(self.success_traffic[i]) for i in self.success_traffic])
         Nblo = sum([len(self.blocked_traffic[i]) for i in self.blocked_traffic])
-        total = Nsuc + Nblo
-        print('Success mapping rate is {:.2f}% in total {} traffic.'.format(Nsuc / total * 100, total))
-        return Nsuc / total * 100
+        result = Result()
+        result.set_attrs(Nsuc, Nblo, ntraffic, self.blocked_traffic, self.success_traffic)
+        return result
 
     def _map_service(self, traffic, MultiDiG, slf):
         src = traffic.src
@@ -386,12 +381,14 @@ class SuitableLightpathFirst(Algorithm):
         try:
             path = nx.shortest_path(G, str(src), str(dst), weight='cost')
         except:
+            traffic.block_reason = '0x01'
             return False
         lightpaths = list(zip(path[:-1], path[1:]))
         if self._allocate_bandwidth(G, MultiDiG, lightpaths, traffic):
             traffic.path = path
             return True
         else:
+            traffic.block_reason = '0x02'
             return False
 
     def _add_lightpaths(self, graph, traffic, MultiDiG, slf):
