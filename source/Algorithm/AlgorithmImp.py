@@ -7,6 +7,7 @@ from pulp import *
 from collections import defaultdict
 
 from source.Algorithm.AlgorithmApi import Algorithm
+from source.Input.InputImp import Traffic
 from source.simulator import LightPathBandwidth
 
 
@@ -367,13 +368,14 @@ class SuitableLightpathFirst(Algorithm):
         # for ori in MultiDiG.nodes:
         #     for sin in MultiDiG.nodes:
         #         try:
-        #             print(MultiDiG[ori][sin])
+        #             print(ori, sin, MultiDiG[ori][sin])
         #         except:
         #             continue
         Nsuc = sum([len(self.success_traffic[i]) for i in self.success_traffic])
         Nblo = sum([len(self.blocked_traffic[i]) for i in self.blocked_traffic])
         total = Nsuc + Nblo
         print('Success mapping rate is {:.2f}% in total {} traffic.'.format(Nsuc / total * 100, total))
+        return Nsuc / total * 100
 
     def _map_service(self, traffic, MultiDiG, slf):
         src = traffic.src
@@ -464,7 +466,7 @@ class SuitableLightpathFirst(Algorithm):
                             G: nx.DiGraph,
                             MultiDiG: nx.MultiDiGraph,
                             lightpaths: list,
-                            traffic: object,
+                            traffic: Traffic,
                             ):
         if not lightpaths:
             return False
@@ -476,5 +478,6 @@ class SuitableLightpathFirst(Algorithm):
         else:
             index = G[start][end]['index']
             MultiDiG[start][end][index]['bandwidth'] -= traffic.bandwidth
+            MultiDiG[start][end][index]['traffic'].append((traffic.src, traffic.dst, traffic.bandwidth, traffic.security))
             traffic.lightpath[start] = {'sin': end, 'index': index, 'level': G[start][end]['level']}
             return True
