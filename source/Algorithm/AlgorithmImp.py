@@ -355,53 +355,69 @@ class SuitableLightpathFirst(Algorithm):
         self.blocked_traffic = defaultdict(list)
         self.default = LightPathBandwidth
 
-    def simulate(self, adj_matrix, level_matrix, bandwidth_matrix, traffic_matrix, slf=True, multi_level=True):
-        for src in range(len(traffic_matrix)):
-            for dst in range(len(traffic_matrix)):
-                for traffic in traffic_matrix[src][dst]:
-                    if self._map_service((src, dst, traffic), adj_matrix, level_matrix, bandwidth_matrix, slf):
+    def simulate(self, MultiDiG: nx.classes.multidigraph.MultiDiGraph, traffic_matrix: list, slf=True, multi_level=True):
+        for row in traffic_matrix:
+            for col in row:
+                for traffic in col:
+                    if self._map_service(traffic, MultiDiG, slf):
                         self.success_traffic[traffic.security].append(traffic)
+                        traffic.blocked = False
                     else:
                         self.blocked_traffic[traffic.security].append(traffic)
-
+        # for ori in MultiDiG.nodes:
+        #     for sin in MultiDiG.nodes:
+        #         try:
+        #             print(MultiDiG[ori][sin])
+        #         except:
+        #             continue
         Nsuc = sum([len(self.success_traffic[i]) for i in self.success_traffic])
         Nblo = sum([len(self.blocked_traffic[i]) for i in self.blocked_traffic])
         total = Nsuc + Nblo
         print('Success mapping rate is {:.2f}% in total {} traffic.'.format(Nsuc / total * 100, total))
 
-    def _map_service(self, traffic, adj_matrix, level_matrix, bandwidth_matrix, slf=True):
-        src = traffic[0]
-        dst = traffic[1]
-        traffic = traffic[2]
-        graph = nx.DiGraph()
-        graph.add_nodes_from([vertex for vertex in range(len(adj_matrix))])
-        if slf:
-            self._add_lightpaths_v1(graph, traffic.bandwidth, traffic.security, adj_matrix, level_matrix, bandwidth_matrix)
-        else:
-            self._add_lightpaths(graph, traffic.security, adj_matrix, level_matrix, bandwidth_matrix)
+    def _map_service(self, traffic, MultiDiG, slf):
+        src = traffic.src
+        dst = traffic.dst
+        G = nx.DiGraph()
+        G.add_nodes_from(MultiDiG.nodes)
+        self._add_lightpaths(G, traffic, MultiDiG, slf)
         try:
-            path = nx.shortest_path(graph, src, dst, weight='cost')
+            path = nx.shortest_path(G, str(src), str(dst), weight='cost')
         except:
             return False
         lightpaths = list(zip(path[:-1], path[1:]))
-        return self._allocate_bandwidth(graph, lightpaths, traffic.bandwidth, adj_matrix, bandwidth_matrix)
+        if self._allocate_bandwidth(G, MultiDiG, lightpaths, traffic):
+            traffic.path = path
+            return True
+        else:
+            return False
 
-    def _add_lightpaths(self, graph, level, adj_matrix, level_matrix, bandwidth_matrix):
-        for ori in range(len(adj_matrix)):
-            for sin in range(len(adj_matrix)):
-                parallel_lightpaths = [(t,
-                                        level_matrix[ori][sin][t],
-                                        bandwidth_matrix[ori][sin][t])
-                                       for t in range(adj_matrix[ori][sin]) if level_matrix[ori][sin][t] <= level]
-                if not parallel_lightpaths:
+    def _add_lightpaths(self, graph, traffic, MultiDiG, slf):
+        nodes = list(MultiDiG.nodes)
+        for ori in nodes:
+            for sin in nodes:
+                try:
+                    parallel_lightpaths = dict(MultiDiG[ori][sin])
+                    lightpath = (-1, 0)     # (index, ava_bandwidth)
+                    for index in parallel_lightpaths:
+                        if parallel_lightpaths[index]['level'] > traffic.security:
+                            continue
+                        # 基于First-Fit思路，最大可用带宽优先
+                        bandwidth_to_compare = parallel_lightpaths[index]['bandwidth']
+                        if bandwidth_to_compare > lightpath[1]:
+                            lightpath = (index, bandwidth_to_compare)
+                        else:
+                            continue
+                    if lightpath == (-1, 0):
+                        raise Exception('Something went wrong.')
+                    graph.add_edge(ori, sin)
+                    graph[ori][sin]['index'] = lightpath[0]
+                    graph[ori][sin]['level'] = parallel_lightpaths[lightpath[0]]['level']
+                    graph[ori][sin]['bandwidth'] = lightpath[1]
+                    graph[ori][sin]['cost'] = self.default / max(float(lightpath[1]), 1e-5)
+                except:
+                    # 不存在并行光路
                     continue
-                parallel_lightpaths.sort(key=lambda x: x[2], reverse=True)      # 降序
-                lightpath = parallel_lightpaths[0]
-                graph.add_edge(ori, sin)
-                graph[ori][sin]['index'] = lightpath[0]
-                graph[ori][sin]['level'] = lightpath[1]
-                graph[ori][sin]['bandwidth'] = lightpath[2]
-                graph[ori][sin]['cost'] = self.default / max(lightpath[2], 1e-5)
 
     def _add_lightpaths_v1(self, graph, bandwidth, level, adj_matrix, level_matrix, bandwidth_matrix):
         for ori in range(len(adj_matrix)):
@@ -446,20 +462,19 @@ class SuitableLightpathFirst(Algorithm):
 
     def _allocate_bandwidth(self,
                             G: nx.DiGraph,
+                            MultiDiG: nx.MultiDiGraph,
                             lightpaths: list,
-                            bandwidth: int,
-                            adj_matrix: list,
-                            bandwidth_matrix: list):
+                            traffic: object,
+                            ):
         if not lightpaths:
             return False
         (start, end) = lightpaths[0]
-        if G[start][end]['bandwidth'] < bandwidth:
+        if G[start][end]['bandwidth'] < traffic.bandwidth:
             return False
-        if lightpaths[1:] and not self._allocate_bandwidth(G, lightpaths[1:], bandwidth, adj_matrix, bandwidth_matrix):
+        if lightpaths[1:] and not self._allocate_bandwidth(G, MultiDiG, lightpaths[1:], traffic):
             return False
         else:
             index = G[start][end]['index']
-            bandwidth_matrix[start][end][index] -= bandwidth
-            G[start][end]['bandwidth'] -= bandwidth
-            G[start][end]['cost'] = self.default / max(bandwidth_matrix[start][end][index], 1e-5)
+            MultiDiG[start][end][index]['bandwidth'] -= traffic.bandwidth
+            traffic.lightpath[start] = {'sin': end, 'index': index, 'level': G[start][end]['level']}
             return True

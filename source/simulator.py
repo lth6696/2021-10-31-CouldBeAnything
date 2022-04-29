@@ -28,6 +28,6 @@ if __name__ == '__main__':
     start = time()
     # res = IntegerLinearProgram().run(lp_adj_matrix, lp_level_matrix, bandwidth_matrix, traffic_matrix, multi_level=True)
     # res = Heuristic().run(lp_adj_matrix, lp_level_matrix, bandwidth_matrix, traffic_matrix, multi_level=True)
-    res = SuitableLightpathFirst().simulate(lp_adj_matrix, lp_level_matrix, bandwidth_matrix, traffic_matrix, slf=False, multi_level=True)
+    res = SuitableLightpathFirst().simulate(input.MultiDiG, traffic_matrix, slf=True, multi_level=True)
     end = time()
     print("Running time is {}".format(end - start))

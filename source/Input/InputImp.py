@@ -18,6 +18,8 @@ class Traffic(object):
         self.bandwidth = Traffic.DefaultValue
         self.security = Traffic.DefaultValue
         self.blocked = True
+        self.path = []          # [node1, node2, ...]
+        self.lightpath = {}     # {ori: {sin: str, index: int, level: int}, ...}
 
         self._set_value(**kwargs)
 
@@ -56,9 +58,9 @@ class InputImp(object):
 
     def _add_parallel_edge(self, origin: str, sink: str, index: int, level: int, bandwidth: int):
         self.MultiDiG.add_edge(origin, sink)
-        # self.MultiDiG[origin][sink][index]['index'] = index
         self.MultiDiG[origin][sink][index]['level'] = level
         self.MultiDiG[origin][sink][index]['bandwidth'] = bandwidth
+        self.MultiDiG[origin][sink][index]['traffic'] = []      # [(src, dst, bandwidth, level), ...]
 
     def set_vertex_connection(self, path: str = '', nw: int = 4, nl: int = 3, bandwidth: int = 100):
         """
