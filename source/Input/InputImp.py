@@ -79,20 +79,24 @@ class InputImp(object):
         self.MultiDiG.add_nodes_from(G.nodes)
         for (origin, sink) in G.edges:
             # 随机生成并行光路数量，取值范围[1,nw+1)
-            num_from_origin_to_sink = np.random.randint(1, nw+1)
+            # num_from_origin_to_sink = np.random.randint(1, nw+1)
+            num_from_origin_to_sink = nw
             for i in range(num_from_origin_to_sink):
                 self._add_parallel_edge(origin=origin,
                                         sink=sink,
                                         index=i,
-                                        level=np.random.randint(1, nl+1),
+                                        # level=np.random.randint(1, nl+1),
+                                        level=int(np.random.uniform(1, nl+1)),
                                         bandwidth=bandwidth)
             # G是无向图，故还需额外添加反向并行光路
-            num_from_sink_to_origin = np.random.randint(1, nw+1)
+            # num_from_sink_to_origin = np.random.randint(1, nw+1)
+            num_from_sink_to_origin = nw
             for i in range(num_from_sink_to_origin):
                 self._add_parallel_edge(origin=sink,
                                         sink=origin,
                                         index=i,
-                                        level=np.random.randint(1, nl+1),
+                                        # level=np.random.randint(1, nl+1),
+                                        level=int(np.random.uniform(1, nl + 1)),
                                         bandwidth=bandwidth)
         logging.info('Successfully generate the topology.')
 
@@ -133,7 +137,8 @@ class InputImp(object):
                         Traffic(src=r,
                                 dst=c,
                                 bandwidth=bandwidth,
-                                security=np.random.randint(1, nl+1))
+                                # security=np.random.randint(1, nl+1)
+                                security=int(np.random.uniform(1, nl+1)))
                     )
                     self.req_bandwidth += bandwidth
         logging.info('InputImp - generate_traffic_matrix - The total throughput is {} Gbps.'.format(self.req_bandwidth))

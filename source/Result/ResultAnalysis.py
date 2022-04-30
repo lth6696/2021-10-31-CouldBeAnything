@@ -49,6 +49,7 @@ class ResultAnalysisImpl(object):
             for traffic in result.set_block_traffic[key]:
                 analysis_result[key][traffic['block_reason']] += 1
         """
+        analysis_result_to_matrix:
                 situation1  situation2  ...
         level1        0.0%        0.0%  ...
         level2        0.0%        0.0%  ...
@@ -59,12 +60,24 @@ class ResultAnalysisImpl(object):
             situations = situations | set(analysis_result[key].keys())
         situations = sorted(situations)
         analysis_result_to_matrix = [[] for _ in range(len(analysis_result.keys()))]
-        for level in analysis_result.keys():
+        for i, level in enumerate(sorted(analysis_result.keys())):
+            analysis_result_to_matrix[i].append(level)
             for situation in situations:
                 if situation in analysis_result[level].keys():
-                    analysis_result_to_matrix[level-1].append(
+                    analysis_result_to_matrix[i].append(
                         analysis_result[level][situation] / result.num_traffic * 100
                     )
                 else:
-                    analysis_result_to_matrix[level - 1].append(0.0)
+                    analysis_result_to_matrix[i].append(0.0)
+        return analysis_result_to_matrix
+
+    def analysis_lightpath_level_distribution(self, MultiDiG: nx.MultiDiGraph):
+        analysis_result = defaultdict(int)
+        levels = set()
+        for (ori, sin, index) in MultiDiG.edges:
+            level = MultiDiG[ori][sin][index]['level']
+            levels |= {level}
+            analysis_result[level] += 1
+        levels = sorted(levels)
+        analysis_result_to_matrix = [analysis_result[key] for key in levels]
         return analysis_result_to_matrix

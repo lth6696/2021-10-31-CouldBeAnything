@@ -377,7 +377,10 @@ class SuitableLightpathFirst():
         dst = traffic.dst
         G = nx.DiGraph()
         G.add_nodes_from(MultiDiG.nodes)
-        self._add_lightpaths(G, traffic, MultiDiG, slf)
+        if slf:
+            self._add_lightpaths_slf(G, traffic, MultiDiG)
+        else:
+            self._add_lightpaths_ff(G, traffic, MultiDiG)
         try:
             path = nx.shortest_path(G, str(src), str(dst), weight='cost')
         except:
@@ -391,7 +394,7 @@ class SuitableLightpathFirst():
             traffic.block_reason = '0x02'
             return False
 
-    def _add_lightpaths(self, graph, traffic, MultiDiG, slf):
+    def _add_lightpaths_ff(self, graph, traffic, MultiDiG):
         nodes = list(MultiDiG.nodes)
         for ori in nodes:
             for sin in nodes:
@@ -418,46 +421,61 @@ class SuitableLightpathFirst():
                     # 不存在并行光路
                     continue
 
-    def _add_lightpaths_v1(self, graph, bandwidth, level, adj_matrix, level_matrix, bandwidth_matrix):
-        for ori in range(len(adj_matrix)):
-            for sin in range(len(adj_matrix)):
-                parallel_lightpaths = [(t,
-                                        level_matrix[ori][sin][t],
-                                        bandwidth_matrix[ori][sin][t])
-                                       for t in range(adj_matrix[ori][sin])
-                                       if level_matrix[ori][sin][t] <= level and bandwidth_matrix[ori][sin][t] >= bandwidth]
-                if not parallel_lightpaths:
-                    continue
-                # parallel_lightpaths.sort(key=lambda x: x[1], reverse=True)  # 降序
-                stay_level_lightpath = sorted([lightpath for lightpath in parallel_lightpaths if lightpath[1] == level],
-                                              key=lambda x: x[2],
-                                              reverse=True)
-                if not stay_level_lightpath:
-                    beyond_level_lightpath = [lightpath for lightpath in parallel_lightpaths if lightpath[1] < level]
-                    if not beyond_level_lightpath:
-                        continue
-                    HIndex = 0
-                    lightpath = beyond_level_lightpath[0]
-                    for lp in beyond_level_lightpath:
-                        h = lp[2]/(level-lp[1])
-                        if h > HIndex:
-                            lightpath = lp
-                            HIndex = h
-                        elif h == HIndex:
-                            # todo 如果H相等，暂时优先考虑大带宽
-                            if lp[2] > lightpath[2]:
-                                lightpath = lp
-                            else:
-                                pass
+    def _add_lightpaths_slf(self, graph, traffic, MultiDiG):
+        nodes = list(MultiDiG.nodes)
+        for ori in nodes:
+            for sin in nodes:
+                try:
+                    parallel_lightpaths = dict(MultiDiG[ori][sin])
+                    lightpath_equal_level = sorted([(index, parallel_lightpaths[index]['bandwidth'])
+                                                    for index in parallel_lightpaths
+                                                    if parallel_lightpaths[index]['level'] == traffic.security],
+                                                   key=lambda x: x[1],
+                                                   reverse=True)
+                    # 若不存在需求等级光路
+                    if not lightpath_equal_level:
+                        # 找出高于需求的光路
+                        lightpath_bigger_level = sorted(
+                            [(index, parallel_lightpaths[index]['bandwidth']/(traffic.security - parallel_lightpaths[index]['level']))
+                             for index in parallel_lightpaths
+                             if parallel_lightpaths[index]['level'] < traffic.security],
+                            key=lambda x: x[1],
+                            reverse=True
+                        )
+                        # 若光路不存在，则抛出异常
+                        if not lightpath_bigger_level:
+                            raise Exception('Something went wrong.')
+                        symbol_ligthpath = lightpath_bigger_level[0]
+                        lightpath_equal_hindex = [lightpath for lightpath in lightpath_bigger_level
+                                                  if lightpath[1] == symbol_ligthpath[1]]
+                        # 若存在多个相等权重的光路
+                        if lightpath_equal_hindex:
+                            # 比较光路非本等级业务抢占的带宽，取小值
+                            lightpath_occupy_bandwidth = []
+                            for lightpath in lightpath_equal_hindex:
+                                occupy_traffic = MultiDiG[ori][sin][lightpath[0]]['traffic']
+                                if occupy_traffic:
+                                    occupy_bandwidth = sum([t[2] for t in occupy_traffic if t[3] != traffic.security])
+                                    lightpath_occupy_bandwidth.append((lightpath[0], occupy_bandwidth))
+                                else:
+                                    lightpath_occupy_bandwidth.append((lightpath[0], 0))
+                            lightpath_occupy_bandwidth.sort(key=lambda x: x[1], reverse=False)
+                            lightpath = lightpath_occupy_bandwidth[0]
                         else:
-                            continue
-                else:
-                    lightpath = stay_level_lightpath[0]
-                graph.add_edge(ori, sin)
-                graph[ori][sin]['index'] = lightpath[0]
-                graph[ori][sin]['level'] = lightpath[1]
-                graph[ori][sin]['bandwidth'] = lightpath[2]
-                graph[ori][sin]['cost'] = self.default / max(lightpath[2], 1e-5)
+                            # 去H最大的高等光路
+                            lightpath = lightpath_bigger_level[0]
+                    else:
+                        # 取带宽最大的同等级光路
+                        lightpath = lightpath_equal_level[0]
+                    graph.add_edge(ori, sin)
+                    index = lightpath[0]
+                    bandwidth = MultiDiG[ori][sin][lightpath[0]]['bandwidth']
+                    graph[ori][sin]['index'] = index
+                    graph[ori][sin]['level'] = MultiDiG[ori][sin][index]['level']
+                    graph[ori][sin]['bandwidth'] = bandwidth
+                    graph[ori][sin]['cost'] = self.default / max(bandwidth, 1e-5)
+                except:
+                    continue
 
     def _allocate_bandwidth(self,
                             G: nx.DiGraph,
