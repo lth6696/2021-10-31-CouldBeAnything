@@ -58,14 +58,16 @@ class ResultPresentation(object):
             plt.plot(row)
         plt.show()
 
-    def plot_block_distribution_under_different_situation(self, y, width=0.8):
+    def plot_block_distribution_under_different_situation(self, y, width=0.8, situations=None):
         y = [col[1:] for col in y]
         # X = [0, (len(y) + 5) * width]
         X = [(len(y) + 5) * width * i for i in range(len(y[0]))]
         map_vir = cm.get_cmap(name='Blues')
         for i, record in enumerate(y):
             plt.bar([j+width*i for j in X], record, width=width, color=map_vir((len(y)-i)/len(y)))
-        plt.xticks([x+(len(y)*width)/2 for x in X], ['0x{}'.format(str(i+1).zfill(2)) for i in range(len(X))])
+        if situations is None:
+            situations = ['0x{}'.format(str(i+1).zfill(2)) for i in range(len(X))]
+        plt.xticks([x+(len(y)*width)/2 for x in X], situations)
         plt.show()
 
     def plot_hist(self, y):

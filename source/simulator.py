@@ -47,7 +47,7 @@ def simulate_gradient(slf=True):
     Nlevel = 3
 
     level_change_res = []
-    block_distribution = []
+    block_distribution = {'sum': [], 'mean': []}
     different_level_distribute_matrix = [[0 for _ in range(40)] for _ in range(38)]
     for NConn in range(2, 40, 1):
         input = InputImp()
@@ -64,18 +64,24 @@ def simulate_gradient(slf=True):
         # res = Heuristic().run(lp_adj_matrix, lp_level_matrix, bandwidth_matrix, traffic_matrix, multi_level=True)
         res = SuitableLightpathFirst().simulate(input.MultiDiG, traffic_matrix, slf, multi_level=True)
         end = time()
-        print("Running time is {}".format(end - start))
+        print("{} {} - Running time is {}".format(NConn, Nlevel, end - start))
         level_change_res.append(res.traffic_mapping_success_rate)
+        # 获取阻塞率数据
         result_matrix = ResultAnalysisImpl().analysis_traffic_block_rate_under_different_situation(res)
         result_matrix = np.array(result_matrix)
+        # 绘制 每次迭代多等级某一阻塞情况下的柱状图
         for row in result_matrix:
-            different_level_distribute_matrix[Nlevel-2][int(row[0])] = row[1]
-        # ResultPresentation().plot_block_distribution_under_different_situation(result_matrix)
-        # block_distribution.append([np.mean(result_matrix[:, col]) for col in range(result_matrix.shape[1])])
-        block_distribution.append([np.sum(result_matrix[:, col]) for col in range(result_matrix.shape[1])])
-    ResultPresentation().plot_block_distribution_under_different_situation(np.array(different_level_distribute_matrix)[:, :11])
-    # ResultPresentation().plot_block_distribution_under_different_situation(different_level_distribute_matrix)
-    # ResultPresentation().plot_block_distribution_under_different_situation(block_distribution)
+            different_level_distribute_matrix[NConn-2][int(row[0])] = row[2]   # row[1] - 0x01 row[2] - 0x02
+        # 绘制 阻塞率vs阻塞情况(对应各个等级) 柱状图
+        # ResultPresentation().plot_block_distribution_under_different_situation(result_matrix, situations=situations)
+        # 绘制 阻塞率vs阻塞情况（每次迭代平均走势） 柱状图
+        block_distribution['mean'].append([np.mean(result_matrix[:, col]) for col in range(result_matrix.shape[1])])
+        # 绘制 阻塞率vs阻塞情况（每次迭代总体走势） 柱状图
+        block_distribution['sum'].append([np.sum(result_matrix[:, col]) for col in range(result_matrix.shape[1])])
+    ResultPresentation().plot_block_distribution_under_different_situation(block_distribution['sum'],
+                                                                           situations=['0x01', '0x02'])
+    ResultPresentation().plot_block_distribution_under_different_situation(np.array(different_level_distribute_matrix)[:, :4])
+
     return level_change_res
 
 
@@ -85,7 +91,7 @@ if __name__ == '__main__':
     level_change_res = []
     level_change_res.append(simulate_gradient(slf=False))
     print('--------------------------------------------------')
-    level_change_res.append(simulate_gradient(slf=True))
+    # level_change_res.append(simulate_gradient(slf=True))
     ResultPresentation().plot_multi_lines(level_change_res)
     # simulate_once()
 

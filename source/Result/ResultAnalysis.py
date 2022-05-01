@@ -55,10 +55,11 @@ class ResultAnalysisImpl(object):
         level2        0.0%        0.0%  ...
            ...         ...         ...  ...
         """
-        situations = set()
-        for key in analysis_result:
-            situations = situations | set(analysis_result[key].keys())
-        situations = sorted(situations)
+        # situations = set()
+        # for key in analysis_result:
+        #     situations |= set(analysis_result[key].keys())
+        # situations = sorted(situations)
+        situations = ['0x01', '0x02']
         analysis_result_to_matrix = [[] for _ in range(len(analysis_result.keys()))]
         for i, level in enumerate(sorted(analysis_result.keys())):
             analysis_result_to_matrix[i].append(level)
