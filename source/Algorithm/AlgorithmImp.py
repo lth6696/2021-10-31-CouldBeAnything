@@ -16,7 +16,7 @@ class IntegerLinearProgram(object):
 
     def run(self, adj_matrix, level_matrix, bandwidth_matrix, traffic_matrix, multi_level=True):
         prob = LpProblem("ServiceMapping", LpMaximize)
-        solver = getSolver('CPLEX_CMD', timeLimit=10)
+        solver = getSolver('CPLEX_CMD', timeLimit=1000)
 
         row, col = len(adj_matrix), len(adj_matrix)
         nodes = [i for i in range(row)]
@@ -147,204 +147,16 @@ class IntegerLinearProgram(object):
                         NPut += traffic_matrix[s][d][k].bandwidth
                 NTaf += len(traffic_matrix[s][d])
 
+        logging.info('---------------------------------------------------------')
         logging.info("Status:{}".format(LpStatus[prob.status]))
         logging.info('IntegerLinearProgram - run - The successfully allocate bandwidth is {} Gbps.'.format(NPut))
         logging.info('IntegerLinearProgram - run - The number of request is {}.'.format(NTaf))
         logging.info('IntegerLinearProgram - run - We successfully map {}.'.format(NSuc))
         logging.info('IntegerLinearProgram - run - The mapping rate is {:2f}'.format(NSuc / NTaf * 100))
 
-        return prob
-
-
-class Heuristic(object):
-    def __init__(self):
-        pass
-
-    def run(self, adj_matrix, level_matrix, bandwidth_matrix, traffic_matrix, interval=3, step=0, multi_level=True):
-        success_traffic = defaultdict(list)
-        blocked_traffic = defaultdict(list)
-        STANDARD_BANDWIDTH = 100
-
-        # comb traffic, save traffic to the corresponding dict[level]
-        convert_traffic_matrix, colums = self._convert_traffic(traffic_matrix, interval)
-        for c in range(colums+len(convert_traffic_matrix.keys())*step):
-            traffics = {}
-            for i, key in enumerate(sorted(convert_traffic_matrix.keys())):
-                if c-i*step < 0 or c-i*step >= colums:
-                    continue
-                else:
-                    traffics[key] = convert_traffic_matrix[key][c-i*step]
-            # traffics = {key: convert_traffic_matrix[key][c] for key in sorted(convert_traffic_matrix.keys())}
-            G = nx.DiGraph()
-            G.add_nodes_from([vertex for vertex in range(len(adj_matrix))])
-            for level in sorted(list(traffics.keys())):
-                if not multi_level:
-                    G = nx.DiGraph()
-                    G.add_nodes_from([vertex for vertex in range(len(adj_matrix))])
-                # add edges into graph G
-                for start in range(len(adj_matrix)):
-                    for end in range(len(adj_matrix[start])):
-                        self._update_lightpath(G, (start, end), level, STANDARD_BANDWIDTH, adj_matrix, level_matrix, bandwidth_matrix, multi_level=multi_level)
-
-                # map traffic
-                traffics[level].sort(key=lambda x: x[2])
-                for traffic in traffics[level]:
-                    src = traffic[0]
-                    dst = traffic[1]
-                    bandwidth = traffic[2]
-                    try:
-                        path = nx.shortest_path(G, src, dst)
-                    except:
-                        blocked_traffic[level].append(traffic)
-                        continue
-                    lightpaths = list(zip(path[:-1], path[1:]))
-
-                    # 递归判断路径冗余并分配带宽
-                    if self._map_service_to_lightpath(G, lightpaths, bandwidth, level, STANDARD_BANDWIDTH, adj_matrix, bandwidth_matrix, level_matrix, multi_level):
-                        success_traffic[level].append(traffic)
-                    else:
-                        blocked_traffic[level].append(traffic)
-        # todo 安全指标
-        # todo 优化方向
-        # for key in blocked_traffic:
-        #     print(key)
-        #     print(blocked_traffic[key])
-        #     print('///////////////////////////////////////')
-
-        Nsuc = sum([len(success_traffic[i]) for i in success_traffic])
-        Nblo = sum([len(blocked_traffic[i]) for i in blocked_traffic])
-        total = Nsuc + Nblo
-        print('Success mapping rate is {:.2f}% in total {} traffic.'.format(Nsuc / total * 100, total))
-
-    def _map_service_to_lightpath(self,
-                                  G: nx.DiGraph,
-                                  lightpaths: list,
-                                  bandwidth: int,
-                                  level: int,
-                                  standard_bandwidth: int,
-                                  adj_matrix: list,
-                                  bandwidth_matrix: list,
-                                  level_matrix: list,
-                                  multi_level: bool):
-        if not lightpaths:
-            return False
-        (start, end) = lightpaths[0]
-        if standard_bandwidth / G[start][end]['cost'] < bandwidth:
-            self._update_lightpath(G, (start, end), level, standard_bandwidth, adj_matrix, level_matrix, bandwidth_matrix, multi_level=multi_level)
-            if standard_bandwidth / G[start][end]['cost'] < bandwidth:
-                return False
-        if lightpaths[1:] and not self._map_service_to_lightpath(G, lightpaths[1:], bandwidth, level, standard_bandwidth, adj_matrix, bandwidth_matrix, level_matrix, multi_level):
-            return False
-        else:
-            index = G[start][end]['index']
-            bandwidth_matrix[start][end][index] -= bandwidth
-            G[start][end]['cost'] = standard_bandwidth / max(bandwidth_matrix[start][end][index], 1e-5)
-            return True
-
-    def _update_lightpath(self,
-                          G: nx.DiGraph,
-                          lightpath: tuple,
-                          level: int,
-                          standard_bandwidth: int,
-                          adj_matrix: list,
-                          level_matrix: list,
-                          bandwidth_matrix: list,
-                          multi_level: bool):
-        start = lightpath[0]
-        end = lightpath[1]
-        if not adj_matrix[start][end]:
-            return False
-        # 找到剩余带宽最大的光路
-        if multi_level:
-            backup_lightpaths = [(t, bandwidth_matrix[start][end][t]) for t in range(adj_matrix[start][end]) if
-                                 level_matrix[start][end][t] <= level]
-        else:
-            backup_lightpaths = [(t, bandwidth_matrix[start][end][t]) for t in range(adj_matrix[start][end]) if
-                                 level_matrix[start][end][t] == level]
-        if not backup_lightpaths:
-            return False
-        backup_lightpath = sorted(backup_lightpaths, key=lambda x: x[1], reverse=True)[0]
-        backup_t = backup_lightpath[0]
-        backup_bandwidth = backup_lightpath[1]
-        # 若图G不存在连接关系，则添加连接
-        if lightpath not in G.edges:
-            G.add_edge(start, end)
-        # 更新连接属性
-        G[start][end]['level'] = level_matrix[start][end][backup_t]
-        G[start][end]['index'] = backup_t
-        G[start][end]['cost'] = standard_bandwidth / max(backup_bandwidth, 1e-5)
-        return True
-
-    def _convert_traffic(self, traffic_matrix: list, step: int = 3):
-        traffic_temp = defaultdict(list)
-        min_ = 1e10
-        max_ = 0
-        for src in range(len(traffic_matrix)):
-            for dst in range(len(traffic_matrix[src])):
-                for traffic in traffic_matrix[src][dst]:
-                    if min_ > traffic.bandwidth:
-                        min_ = traffic.bandwidth
-                    elif max_ < traffic.bandwidth:
-                        max_ = traffic.bandwidth
-                    traffic_temp[traffic.security].append((src, dst, traffic.bandwidth))
-
-        colums = math.ceil((max_-min_+1)/step)
-        traffics = {}
-        for level in traffic_temp:
-            list_temp = [[] for _ in range(colums)]
-            for traffic in traffic_temp[level]:
-                index = int((traffic[2] - min_) / step)
-                list_temp[index].append(traffic)
-            list_temp = [sorted(row, key=lambda x: x[2]) for row in list_temp]
-            traffics[level] = list_temp
-
-        return traffics, colums
-
-    def __run_v1(self, adj_matrix, level_matrix, bandwidth_matrix, traffic_matrix, multi_level):
-        success_traffic = defaultdict(list)
-        blocked_traffic = defaultdict(list)
-        STANDARD_BANDWIDTH = 100
-
-        # comb traffic, save traffic to the corresponding dict[level]
-        traffics = defaultdict(list)
-        for src in range(len(traffic_matrix)):
-            for dst in range(len(traffic_matrix[src])):
-                for traffic in traffic_matrix[src][dst]:
-                    traffics[traffic.security].append((src, dst, traffic.bandwidth))
-
-        G = nx.DiGraph()
-        G.add_nodes_from([vertex for vertex in range(len(adj_matrix))])
-        for level in sorted(list(traffics.keys())):
-            # add edges into graph G
-            for start in range(len(adj_matrix)):
-                for end in range(len(adj_matrix[start])):
-                    self._update_lightpath(G, (start, end), level, STANDARD_BANDWIDTH, adj_matrix, level_matrix,
-                                           bandwidth_matrix, multi_level)
-
-            # map traffic
-            traffics[level].sort(key=lambda x: x[2])
-            for traffic in traffics[level]:
-                src = traffic[0]
-                dst = traffic[1]
-                bandwidth = traffic[2]
-                try:
-                    path = nx.shortest_path(G, src, dst)
-                except:
-                    blocked_traffic[level].append(traffic)
-                    continue
-                lightpaths = list(zip(path[:-1], path[1:]))
-
-                # 递归判断路径冗余并分配带宽
-                if self._map_service_to_lightpath(G, lightpaths, bandwidth, level, STANDARD_BANDWIDTH, adj_matrix,
-                                                  bandwidth_matrix, level_matrix, multi_level):
-                    success_traffic[level].append(traffic)
-                else:
-                    blocked_traffic[level].append(traffic)
-
-        Nsuc = sum([len(success_traffic[i]) for i in success_traffic])
-        Nblo = sum([len(blocked_traffic[i]) for i in blocked_traffic])
-        total = Nsuc + Nblo
-        print('Success mapping rate is {:.2f}% in total {} traffic.'.format(Nsuc / total * 100, total))
+        result = Result()
+        result.set_attrs(NSuc, NTaf-NSuc, NTaf, {}, {})
+        return result
 
 
 class SuitableLightpathFirst():
@@ -369,7 +181,7 @@ class SuitableLightpathFirst():
         Nsuc = sum([len(self.success_traffic[i]) for i in self.success_traffic])
         Nblo = sum([len(self.blocked_traffic[i]) for i in self.blocked_traffic])
         result = Result()
-        result.set_attrs(Nsuc, Nblo, ntraffic, self.blocked_traffic, self.success_traffic)
+        result.set_attrs(Nsuc, Nblo, ntraffic, self.blocked_traffic, self.success_traffic, traffic_matrix, MultiDiG)
         return result
 
     def _map_service(self, traffic, MultiDiG, slf):

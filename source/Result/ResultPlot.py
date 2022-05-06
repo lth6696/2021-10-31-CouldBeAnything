@@ -2,12 +2,14 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 import networkx as nx
 import numpy as np
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes, mark_inset
 
 
 def style(width, height, fontsize=8):
     plt.rcParams['figure.figsize'] = (width * 0.39370, height * 0.39370)  # figure size in inches
-    plt.rcParams['font.family'] = 'serif'
-    plt.rcParams['font.serif'] = ['Times New Roman']
+    # plt.rcParams['font.family'] = 'serif'
+    # plt.rcParams['font.serif'] = ['Times New Roman']
+    plt.rcParams['font.sans-serif'] = 'cambria'
     plt.rcParams['font.size'] = fontsize
     plt.rcParams['figure.dpi'] = 300
     plt.rcParams['patch.linewidth'] = 0.5
@@ -48,44 +50,110 @@ class ResultPresentation(object):
     def __init__(self):
         pass
 
-    def plot_line(self, y):
-        style(13, 7)
-        plt.plot(y)
+    def plot_heuristic_and_ilp_for_success_rate(self, X, y, xlabel):
+        style(8.6, 6.2)
+        marker = ['o', 's', 'D']
+        line_style = ['-', '--', '-.', ':']
+        for i, row in enumerate(y):
+            plt.plot(X, row, ls=line_style[i], lw=0.5, marker=marker[i], ms=2)
+        plt.xlabel(xlabel)
+        plt.ylabel('Success Mapping Rate (%)')
+        plt.xticks([i for i in X])
+        plt.yticks(rotation='vertical')
+        plt.tight_layout()
+        plt.legend(['ILP-ML', 'FF-ML', 'SLF-ML'])
+        plt.grid(True, ls=':', lw=0.5, c='#d5d6d8')
         plt.show()
 
-    def plot_multi_lines(self, y):
-        for row in y:
-            plt.plot(row)
+    def plot_heuristic_for_success_rate(self, X, y, xlabel):
+        style(8.6, 6.2)
+        marker = ['s', 'D']
+        line_style = ['--', '-.', ':']
+        y = [[row[i] for i in range(0, len(row), 2)] for row in y]
+        for i, row in enumerate(y):
+            plt.plot(X, row, ls=line_style[i], lw=0.5, marker=marker[i], ms=2)
+        plt.xlabel(xlabel)
+        plt.ylabel('Success Mapping Rate (%)')
+        plt.xticks([X[i] for i in range(0, len(X), 2)])
+        plt.yticks(rotation='vertical')
+        plt.tight_layout()
+        plt.legend(['FF-ML', 'SLF-ML'])
+        plt.grid(True, ls=':', lw=0.5, c='#d5d6d8')
+        plt.show()
+
+    def plot_heuristic_for_success_rate_with_axin(self, X, y, xlabel):
+        style(8.6, 6.2)
+        marker = ['s', 'D']
+        line_style = ['--', '-.', ':']
+        y_re = [[row[i] for i in range(0, len(row), 2)] for row in y]
+        fig, ax = plt.subplots(1, 1)
+        for i, row in enumerate(y_re):
+            plt.plot(X, row, ls=line_style[i], lw=0.5, marker=marker[i], ms=2)
+        plt.xlabel(xlabel)
+        plt.ylabel('Success Mapping Rate (%)')
+        plt.xticks([X[i] for i in range(0, len(X), 4)])
+        plt.yticks(rotation='vertical')
+        plt.tight_layout()
+        plt.legend(['FF-ML', 'SLF-ML'])
+        plt.grid(True, ls=':', lw=0.5, c='#d5d6d8')
+        axins = inset_axes(ax, width="50%", height="40%", loc='center',
+                           bbox_to_anchor=(0.2, 0, 1, 1),
+                           bbox_transform=ax.transAxes,
+                           axes_kwargs={'xticks': [17, 19, 21, 23, 25]})
+        axins.plot([i for i in range(17, 26, 2)], [y[0][i] for i in range(8, 13, 1)], ls=line_style[0], lw=0.5, marker=marker[0], ms=2)
+        axins.plot([i for i in range(17, 26, 2)], [y[1][i] for i in range(8, 13, 1)], ls=line_style[1], lw=0.5, marker=marker[1], ms=2)
+        axins.grid(True, ls=':', lw=0.5, c='#d5d6d8')
+        mark_inset(ax, axins, loc1=2, loc2=4, fc="none", ec='k', lw=0.5, ls=':')
         plt.show()
 
     def plot_block_distribution_under_different_situation(self, y, width=0.8, situations=None):
+        style(8.6, 6.2)
         y = [col[1:] for col in y]
-        # X = [0, (len(y) + 5) * width]
         X = [(len(y) + 5) * width * i for i in range(len(y[0]))]
-        map_vir = cm.get_cmap(name='Blues')
+        map_vir = cm.get_cmap(name='spring')
         for i, record in enumerate(y):
             plt.bar([j+width*i for j in X], record, width=width, color=map_vir((len(y)-i)/len(y)))
         if situations is None:
             situations = ['0x{}'.format(str(i+1).zfill(2)) for i in range(len(X))]
-        plt.xticks([x+(len(y)*width)/2 for x in X], situations)
+        # plt.xticks([x+(len(y)*width)/2 for x in X], situations)
+        plt.xticks([x + (len(y) * width) / 2 for x in X], ['Path', 'Bandwidth'])
+        plt.yticks([i for i in range(0, 81, 20)], rotation='vertical')
+        plt.xlabel('Different Situation')
+        plt.ylabel('Sum Blocking Probability (%)')
+        plt.tight_layout()
+        plt.grid(True, ls=':', lw=0.5, c='#d5d6d8')
+        plt.show()
+
+    def plot_link_utilization_per_level(self, y, width=0.8):
+        style(8.6, 6.2)
+        map_vir = cm.get_cmap(name='spring')
+        X = [(len(y) + 5) * width * i for i in range(len(y[0]))]
+        for i, record in enumerate(y):
+            plt.bar([j+width*i for j in X], record, width=width, color=map_vir((len(y)-i)/len(y)))
+        plt.yticks([i/10 for i in range(0, 11, 2)])
+        plt.show()
+
+    def plot_link_utilization(self, y):
+        style(8.6, 6.2)
+        marker = ['o', 's', 'D']
+        line_style = ['--', ':', '-']
+        map_vir = cm.get_cmap(name='Blues')
+        color = ['#ff7f0e', '#2ca02c']
+        X = [i for i in range(1, len(y[0])*2+1, 4)]
+        y_re = [[row[i] for i in range(0, len(row), 2)] for row in y]
+        for i, row in enumerate(y_re):
+            plt.plot(X, row, ls=line_style[i%3], lw=0.5, marker=marker[i%3], ms=2, color=color[int(i/3)])
+        # plt.xscale('log')
+        # plt.yscale('log')
+        plt.xlabel('Number of Traffic Matrix')
+        plt.ylabel('Level Deviation')
+        # plt.xticks([X[i] for i in range(0, len(X), 4)])
+        plt.yticks([i/10 for i in range(0, 11, 2)], rotation='vertical')
+        plt.tight_layout()
+        plt.legend(['FF-ML-L1', 'FF-ML-L2', 'FF-ML-L3', 'SLF-ML-L1', 'SLF-ML-L2', 'SLF-ML-L3'], ncol=2)
+        plt.grid(True, ls=':', lw=0.5, c='#d5d6d8')
         plt.show()
 
     def plot_hist(self, y):
         plt.hist(y)
         plt.show()
-
-
-if __name__ == '__main__':
-    t = ResultPresentation()
-    x = [[1.0, 0.9615384615384616, 7.142857142857142], [1.5, 3.7774725274725274, 3.5714285714285716],
-         [2.0, 3.296703296703297, 1.4652014652014653], [2.5, 2.8159340659340657, 1.9230769230769231],
-         [3.0, 3.021978021978022, 0.4945054945054945], [3.8333333333333335, 1.6025641025641024, 0.8241758241758244],
-         [3.5, 2.0375457875457874, 0.38919413919413914], [4.75, 1.510989010989011, 0.4635989010989011],
-         [6.666666666666667, 1.0531135531135531, 0.5837912087912088], [6.0, 1.3236763236763238, 0.1873126873126873],
-         [6.583333333333333, 1.0645604395604396, 0.3663003663003663], [7.0, 1.3947590870667794, 0.23245984784446322],
-         [8.0, 0.9157509157509158, 0.4853479853479854], [6.0, 1.2737262737262738, 0.2997002997002997],
-         [5.5, 1.1813186813186813, 0.23351648351648352], [5.5, 1.043956043956044, 0.28846153846153844],
-         [8.133333333333333, 1.1080586080586086, 0.12820512820512822],
-         [10.222222222222221, 0.6791819291819292, 0.48840048840048844],
-         [7.642857142857143, 1.1773940345368916, 0.2845368916797488]]
-    t.plot_block_distribution_under_different_situation(x)

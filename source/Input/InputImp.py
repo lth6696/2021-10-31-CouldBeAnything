@@ -71,7 +71,7 @@ class InputImp(object):
         :param bandwidth: int, default initialized bandwidth.
         :return:
         """
-        np.random.seed(0)
+        # np.random.seed(0)
         if not path:
             path = InputImp.TopologyPath
         G = self._get_customize_topology(path)
@@ -126,7 +126,7 @@ class InputImp(object):
         nodes = list(map(int, self.MultiDiG.nodes))
         traffic_matrix = [[[] for _ in nodes] for _ in nodes]
 
-        np.random.seed(8)
+        # np.random.seed(8)
         for r in nodes:
             for c in nodes:
                 if r == c:
