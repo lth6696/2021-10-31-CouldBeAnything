@@ -19,7 +19,7 @@ LightPathBandwidth = 100 * BaseLine  # 100Gbps
 
 
 def simulate(nw: int, nconn: int, nl: int, solver='SLF-ML'):
-    solvers = {'ILP-ML', 'ILP-SL', 'FF-ML', 'FF-SL', 'SLF-ML', 'SLF-SL'}
+    solvers = {'ILP-ML', 'ILP-SL', 'FF-ML', 'FF-SL', 'SLF-ML'}
     if solver not in solvers:
         raise ValueError('Invalid solver \'{}\''.format(solver))
     operator, scheme = solver.split('-')
@@ -56,8 +56,8 @@ if __name__ == '__main__':
         # 每种情况运行10次，结果取平均
         one_run_result = [[i+1 for i in range(nl)]]
         for _ in range(10):
-            result = simulate(nw=nw, nconn=nconn, nl=nl, solver='FF-ML')
-            res_ana = ResultAnalysisImpl(result).analyze_link_utilization_for_each_level(LightPathBandwidth)
+            result = simulate(nw=nw, nconn=nconn, nl=nl, solver='FF-SL')
+            res_ana = ResultAnalysisImpl(result).analyze_throughput_for_each_level()
             if one_run_result[0] != res_ana[0]:
                 logging.error('{} - {} - nw: {} nconn: {} nl: {} misses results: {} - {}.'.format(__file__, __name__,
                                                                                                   nw, nconn, nl,
@@ -69,7 +69,7 @@ if __name__ == '__main__':
         logging.info('{} - {} - nw: {} nconn: {} nl: {} done, the result is {}.'.format(__file__, __name__, nw, nconn, nl, all_run_result[-1]))
 
     print(all_run_result)
-    data = {'utilization': {'wavelength': nw, 'level': nl, 'traffic': (1, border), 'SLF': all_run_result}}
+    data = {'throughput': {'wavelength': nw, 'level': nl, 'traffic': (1, border), 'FF-SL': all_run_result}}
     file = open('results_.json', 'w')
     file.write(json.dumps(data))
     file.close()

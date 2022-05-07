@@ -53,7 +53,7 @@ class IntegerLinearProgram(object):
                 tempD = []
                 for k in range(len(traffic_matrix[s][d])):
                     tempD.append(LpVariable("Suc_{}_{}_{}".format(s, d, k),
-                                               lowBound=0, upBound=1, cat=LpInteger))
+                                            lowBound=0, upBound=1, cat=LpInteger))
                 temp_src.append(tempD)
             S.append(temp_src)
 
@@ -69,20 +69,20 @@ class IntegerLinearProgram(object):
             for d in nodes:
                 for k in range(len(traffic_matrix[s][d])):
                     prob += (
-                        lpSum([Lamda[s][d][k][s][j][t] for j in nodes for t in range(adj_matrix[s][j])])
-                        == S[s][d][k]
+                            lpSum([Lamda[s][d][k][s][j][t] for j in nodes for t in range(adj_matrix[s][j])])
+                            == S[s][d][k]
                     )
                     prob += (
-                        lpSum([Lamda[s][d][k][i][d][t] for i in nodes for t in range(adj_matrix[i][d])])
-                        == S[s][d][k]
+                            lpSum([Lamda[s][d][k][i][d][t] for i in nodes for t in range(adj_matrix[i][d])])
+                            == S[s][d][k]
                     )
                     prob += (
-                        lpSum([Lamda[s][d][k][i][s][t] for i in nodes for t in range(adj_matrix[i][s])])
-                        == 0
+                            lpSum([Lamda[s][d][k][i][s][t] for i in nodes for t in range(adj_matrix[i][s])])
+                            == 0
                     )
                     prob += (
-                        lpSum([Lamda[s][d][k][d][j][t] for j in nodes for t in range(adj_matrix[d][j])])
-                        == 0
+                            lpSum([Lamda[s][d][k][d][j][t] for j in nodes for t in range(adj_matrix[d][j])])
+                            == 0
                     )
 
         for s in nodes:
@@ -92,8 +92,8 @@ class IntegerLinearProgram(object):
                         if m == s or m == d:
                             continue
                         prob += (
-                            lpSum([Lamda[s][d][k][i][m][t] for i in nodes for t in range(adj_matrix[i][m])])
-                            == lpSum([Lamda[s][d][k][m][j][t] for j in nodes for t in range(adj_matrix[m][j])])
+                                lpSum([Lamda[s][d][k][i][m][t] for i in nodes for t in range(adj_matrix[i][m])])
+                                == lpSum([Lamda[s][d][k][m][j][t] for j in nodes for t in range(adj_matrix[m][j])])
                         )
 
         # bandwidth
@@ -101,20 +101,21 @@ class IntegerLinearProgram(object):
             for j in nodes:
                 for t in range(adj_matrix[i][j]):
                     prob += (
-                        lpSum([Lamda[s][d][k][i][j][t] * traffic_matrix[s][d][k].bandwidth for s in nodes for d in nodes for k in range(len(traffic_matrix[s][d]))])
-                        <= bandwidth_matrix[i][j][t]
+                            lpSum([Lamda[s][d][k][i][j][t] * traffic_matrix[s][d][k].bandwidth for s in nodes for d in
+                                   nodes for k in range(len(traffic_matrix[s][d]))])
+                            <= bandwidth_matrix[i][j][t]
                     )
 
         for s in nodes:
             for d in nodes:
                 for k in range(len(traffic_matrix[s][d])):
                     prob += (
-                        lpSum([Lamda[s][d][k][s][j][t] for j in nodes for t in range(adj_matrix[s][j])])
-                        <= traffic_matrix[s][d][k].bandwidth
+                            lpSum([Lamda[s][d][k][s][j][t] for j in nodes for t in range(adj_matrix[s][j])])
+                            <= traffic_matrix[s][d][k].bandwidth
                     )
                     prob += (
-                        lpSum([Lamda[s][d][k][i][d][t] for i in nodes for t in range(adj_matrix[i][d])])
-                        <= traffic_matrix[s][d][k].bandwidth
+                            lpSum([Lamda[s][d][k][i][d][t] for i in nodes for t in range(adj_matrix[i][d])])
+                            <= traffic_matrix[s][d][k].bandwidth
                     )
 
         # level
@@ -125,12 +126,14 @@ class IntegerLinearProgram(object):
                         for j in nodes:
                             for t in range(adj_matrix[i][j]):
                                 prob += (
-                                    traffic_matrix[s][d][k].security / level_matrix[i][j][t] >= Lamda[s][d][k][i][j][t]
+                                        traffic_matrix[s][d][k].security / level_matrix[i][j][t] >=
+                                        Lamda[s][d][k][i][j][t]
                                 )
                                 # extra condition to limit the level-cross, which can be ignore
                                 if not multi_level:
                                     prob += (
-                                        (traffic_matrix[s][d][k].security / level_matrix[i][j][t] - 1 / 1e4) * Lamda[s][d][k][i][j][t] <= 1
+                                            (traffic_matrix[s][d][k].security / level_matrix[i][j][t] - 1 / 1e4) *
+                                            Lamda[s][d][k][i][j][t] <= 1
                                     )
 
         # The problem is solved using PuLP's choice of Solver
@@ -155,7 +158,7 @@ class IntegerLinearProgram(object):
         logging.info('IntegerLinearProgram - run - The mapping rate is {:2f}'.format(NSuc / NTaf * 100))
 
         result = Result()
-        result.set_attrs(NSuc, NTaf-NSuc, NTaf, {}, {})
+        result.set_attrs(NSuc, NTaf - NSuc, NTaf, {}, {})
         return result
 
 
@@ -167,13 +170,14 @@ class SuitableLightpathFirst():
         self.blocked_traffic = defaultdict(list)
         self.default = LightPathBandwidth
 
-    def simulate(self, MultiDiG: nx.classes.multidigraph.MultiDiGraph, traffic_matrix: list, slf=True, multi_level=True):
+    def simulate(self, MultiDiG: nx.classes.multidigraph.MultiDiGraph, traffic_matrix: list, slf=True,
+                 multi_level=True):
         ntraffic = 0
         for row in traffic_matrix:
             for col in row:
                 for traffic in col:
                     ntraffic += 1
-                    if self._map_service(traffic, MultiDiG, slf):
+                    if self._map_service(traffic, MultiDiG, slf, multi_level):
                         self.success_traffic[traffic.security].append(traffic)
                         traffic.blocked = False
                     else:
@@ -184,7 +188,7 @@ class SuitableLightpathFirst():
         result.set_attrs(Nsuc, Nblo, ntraffic, self.blocked_traffic, self.success_traffic, traffic_matrix, MultiDiG)
         return result
 
-    def _map_service(self, traffic, MultiDiG, slf):
+    def _map_service(self, traffic, MultiDiG, slf, multi_level):
         src = traffic.src
         dst = traffic.dst
         G = nx.DiGraph()
@@ -192,7 +196,7 @@ class SuitableLightpathFirst():
         if slf:
             self._add_lightpaths_slf(G, traffic, MultiDiG)
         else:
-            self._add_lightpaths_ff(G, traffic, MultiDiG)
+            self._add_lightpaths_ff(G, traffic, MultiDiG, multi_level)
         try:
             path = nx.shortest_path(G, str(src), str(dst), weight='cost')
         except:
@@ -206,15 +210,17 @@ class SuitableLightpathFirst():
             traffic.block_reason = '0x02'
             return False
 
-    def _add_lightpaths_ff(self, graph, traffic, MultiDiG):
+    def _add_lightpaths_ff(self, graph, traffic, MultiDiG, multi_level):
         nodes = list(MultiDiG.nodes)
         for ori in nodes:
             for sin in nodes:
                 try:
                     parallel_lightpaths = dict(MultiDiG[ori][sin])
-                    lightpath = (-1, 0)     # (index, ava_bandwidth)
+                    lightpath = (-1, 0)  # (index, ava_bandwidth)
                     for index in parallel_lightpaths:
                         if parallel_lightpaths[index]['level'] > traffic.security:
+                            continue
+                        if multi_level == False and parallel_lightpaths[index]['level'] < traffic.security:
                             continue
                         # 基于First-Fit思路，最大可用带宽优先
                         bandwidth_to_compare = parallel_lightpaths[index]['bandwidth']
@@ -248,7 +254,8 @@ class SuitableLightpathFirst():
                     if not lightpath_equal_level:
                         # 找出高于需求的光路
                         lightpath_bigger_level = sorted(
-                            [(index, parallel_lightpaths[index]['bandwidth']/(traffic.security - parallel_lightpaths[index]['level']))
+                            [(index, parallel_lightpaths[index]['bandwidth'] / (
+                                    traffic.security - parallel_lightpaths[index]['level']))
                              for index in parallel_lightpaths
                              if parallel_lightpaths[index]['level'] < traffic.security],
                             key=lambda x: x[1],
@@ -305,6 +312,7 @@ class SuitableLightpathFirst():
         else:
             index = G[start][end]['index']
             MultiDiG[start][end][index]['bandwidth'] -= traffic.bandwidth
-            MultiDiG[start][end][index]['traffic'].append((traffic.src, traffic.dst, traffic.bandwidth, traffic.security))
+            MultiDiG[start][end][index]['traffic'].append(
+                (traffic.src, traffic.dst, traffic.bandwidth, traffic.security))
             traffic.lightpath[start] = {'sin': end, 'index': index, 'level': G[start][end]['level']}
             return True
