@@ -156,3 +156,22 @@ class ResultAnalysisImpl(object):
         levels = sorted(list(hop.keys()))
         hop_to_standard_format = [levels] + [[np.mean(hop[level]) for level in levels]]
         return hop_to_standard_format
+
+    def analyze_success_rate_for_each_level(self):
+        """
+                level1  level2  level3  ...
+        success     s1     s2      s3   ...
+        """
+        success = defaultdict(int)
+        ntraffic = defaultdict(int)
+        for src in range(len(self.result.traffic_matrix)):
+            for dst in range(len(self.result.traffic_matrix[src])):
+                for traffic in self.result.traffic_matrix[src][dst]:
+                    ntraffic[traffic.security] += 1
+                    if not traffic.blocked:
+                        success[traffic.security] += 1
+                    else:
+                        continue
+        levels = sorted(list(success.keys()))
+        success_to_standard_format = [levels] + [[success[level]/ntraffic[level]*100 for level in levels]]
+        return success_to_standard_format

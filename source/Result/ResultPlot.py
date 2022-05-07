@@ -3,6 +3,7 @@ from matplotlib import cm
 import networkx as nx
 import numpy as np
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes, mark_inset
+import json
 
 
 def style(width, height, fontsize=8):
@@ -83,7 +84,7 @@ class ResultPresentation(object):
                         fsize: tuple = (8.6, 6.2)):
         marker = ['o', 's', 'X', '*']
         line = ['-', '--', ':']
-        map_vir = cm.get_cmap(name='Blues')
+        map_vir = cm.get_cmap(name='gist_rainbow')
         solver = ['ILP-SL', 'ILP-ML', 'FF-SL', 'FF-ML', 'SLF-ML']
 
         if fsize is not None:
@@ -94,9 +95,9 @@ class ResultPresentation(object):
             # 取出各个等级数据
             for j in range(len(y[0])):
                 plt.plot([e[j] for e in y],             # set data
-                         marker=marker[0], ms=2,        # set marker
-                         ls=line[1], lw=0.5,            # set line
-                         color=None                     # others
+                         marker=marker[j], ms=2,        # set marker
+                         ls=line[j], lw=0.5,            # set line
+                         color=map_vir(1/(len(data)*len(y[0]))*(len(y[0])*i+j))                     # others
                          )
         plt.yticks(rotation='vertical')
         plt.xlabel(xlabel)
@@ -107,7 +108,7 @@ class ResultPresentation(object):
 
 
 if __name__ == '__main__':
-    data = [[[0.3268, 0.3273, 0.3707], [0.6645, 0.6299, 0.6036], [0.9610, 0.8244, 0.8839]],
-            [[1.1083, 1.0201, 1.1293], [1.1780, 1.2141, 1.1763], [1.2890, 1.2475, 1.3630]],
-            [[1.4178, 1.3981, 1.2178], [1.4073, 1.5098, 1.4979], [1.4184, 1.4572, 1.5368]]]
-    ResultPresentation().plot_line_graph(data)
+    result_json = json.load(open('../results.json'))
+    ResultPresentation().plot_line_graph([result_json['success']['SLF-ML']],
+                                         ylabel='Hop',
+                                         xlabel='Number of Traffic Matrix')
