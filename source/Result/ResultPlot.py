@@ -83,7 +83,7 @@ class ResultPresentation(object):
                         ylabel: str = '',
                         fsize: tuple = (8.6, 6.2)):
         marker = ['o', 's', 'X', '*']
-        line = ['-', '--', ':']
+        line = ['-', '--', ':', '-.']
         map_vir = cm.get_cmap(name='gist_rainbow')
         solver = ['ILP-SL', 'ILP-ML', 'FF-SL', 'FF-ML', 'SLF-ML']
 
@@ -106,9 +106,45 @@ class ResultPresentation(object):
         plt.tight_layout()
         plt.show()
 
+    def plot_line_graph_for_icocn(self,
+                        data,
+                        x: list = None,
+                        xlabel: str = '',
+                        ylabel: str = '',
+                        fsize: tuple = (5.8, 4.4)):
+        marker = ['o', 's', 'X', '^', 'p']
+        line = ['-', '--', ':', '-.']
+        map_vir = cm.get_cmap(name='gist_rainbow')
+        solver = ["LLF", "HLLF", "HBLLF", "SPF"]
+
+        if fsize is not None:
+            style(*fsize)
+
+        # 取出不同方案数据
+        for i, y in enumerate(data):
+            plt.plot(x,
+                     y,                             # set data
+                     marker=marker[i], ms=2,        # set marker
+                     ls=line[int(i%len(line))], lw=0.5,            # set line
+                     color=map_vir((i+1)/len(data)), # others
+                     label=solver[i]
+                     )
+        plt.yticks(rotation='vertical')
+        plt.xlabel(xlabel)
+        plt.ylabel(ylabel)
+        plt.xticks([i*5 for i in range(5)])
+        # plt.yticks([i for i in range(1, 5)])
+        plt.grid(True, ls=':', lw=0.5, c='#d5d6d8')
+        plt.tight_layout()
+        plt.legend()
+        plt.show()
+
 
 if __name__ == '__main__':
-    result_json = json.load(open('../results.json'))
-    ResultPresentation().plot_line_graph([result_json['success']['SLF-ML']],
-                                         ylabel='Hop',
-                                         xlabel='Number of Traffic Matrix')
+    result_json = json.load(open('../results_for_icocn.json'))
+    # var = 'success'
+    # ResultPresentation().plot_line_graph_for_icocn([result_json[var][x] for x in result_json[var].keys()],
+    #                                                x=[i for i in range(1, 21)],
+    #                                                ylabel='Success Mapping Rate (%)',
+    #                                                xlabel='Number of Traffic Matrix')
+    print(np.mean(result_json['level_deviation']['LLF-L'])-np.mean(result_json['level_deviation']['LLF-LHB']))
