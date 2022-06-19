@@ -1,6 +1,7 @@
 import os
 import logging
 import numpy as np
+# np.random.seed(0)
 
 import networkx as nx
 import pandas as pd
@@ -111,7 +112,7 @@ class InputImp(object):
     def get_level_matrix(self):
         nodes = list(self.MultiDiG.nodes)
         level_matrix = [[[] for _ in range(len(nodes))] for _ in range(len(nodes))]
-        for (source, sink, index) in reversed(list(self.MultiDiG.edges)):
+        for (source, sink, index) in list(self.MultiDiG.edges):
             level_matrix[int(source)][int(sink)].append(self.MultiDiG[source][sink][index]['level'])
         return level_matrix
 

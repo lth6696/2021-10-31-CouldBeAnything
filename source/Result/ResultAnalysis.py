@@ -2,6 +2,8 @@ import networkx as nx
 import numpy as np
 from collections import defaultdict
 
+import pandas
+
 
 class Result(object):
     def __init__(self):
@@ -42,6 +44,14 @@ class Result(object):
     def _verify_quantity_correct(self):
         if self.num_traffic != self.num_traffic_success_mapping + self.num_traffic_fail_mapping:
             raise Exception('Quantity relationship is wrong.')
+
+
+class Results(object):
+    def __init__(self):
+        self.success_mapping_rate = []
+        self.throughput = []
+        self.hops = []
+        self.lightpath_utilization = []
 
 
 class ResultAnalysisImpl(object):
@@ -175,3 +185,26 @@ class ResultAnalysisImpl(object):
         levels = sorted(list(success.keys()))
         success_to_standard_format = [levels] + [[success[level]/ntraffic[level]*100 for level in levels]]
         return success_to_standard_format
+
+    def analyze_each_lightpath_utilization(self, LightPathBandwidth, level_filter: tuple = (0, 0)):
+        """
+
+        :param LightPathBandwidth:
+        :param level_filter: a * x = b -> (a, b)
+        :return:
+        """
+        a, b = level_filter
+        nodes = self.result.MultiDiG.nodes
+        Nnodes = len(nodes)
+        utilization_matrix = np.zeros((Nnodes, Nnodes))
+        temp_matrix = [[[] for _ in range(Nnodes)] for _ in range(Nnodes)]
+        for (ori, sin, index) in self.result.MultiDiG.edges:
+            if a * self.result.MultiDiG[ori][sin][index]['level'] == b:
+                temp_matrix[int(ori)][int(sin)].append(
+                    1 - (self.result.MultiDiG[ori][sin][index]['bandwidth']/LightPathBandwidth)
+                )
+        for s in range(Nnodes):
+            for d in range(Nnodes):
+                utilization_matrix[s][d] = np.mean(temp_matrix[s][d])
+        print(pandas.DataFrame(utilization_matrix))
+        return utilization_matrix

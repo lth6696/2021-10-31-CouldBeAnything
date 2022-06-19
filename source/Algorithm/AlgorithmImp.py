@@ -1,4 +1,7 @@
+import logging
 import math
+
+import networkx
 import pandas as pd
 import pulp.pulp
 import networkx as nx
@@ -14,9 +17,9 @@ class IntegerLinearProgram(object):
     def __init__(self):
         pass
 
-    def run(self, adj_matrix, level_matrix, bandwidth_matrix, traffic_matrix, multi_level=True):
+    def run(self, MultiDiG, adj_matrix, level_matrix, bandwidth_matrix, traffic_matrix, multi_level=True):
         prob = LpProblem("ServiceMapping", LpMaximize)
-        solver = getSolver('CPLEX_CMD', timeLimit=1000)
+        solver = getSolver('CPLEX_CMD', timeLimit=100)
 
         row, col = len(adj_matrix), len(adj_matrix)
         nodes = [i for i in range(row)]
@@ -95,6 +98,12 @@ class IntegerLinearProgram(object):
                                 lpSum([Lamda[s][d][k][i][m][t] for i in nodes for t in range(adj_matrix[i][m])])
                                 == lpSum([Lamda[s][d][k][m][j][t] for j in nodes for t in range(adj_matrix[m][j])])
                         )
+                        prob += (
+                            lpSum([Lamda[s][d][k][i][m][t] for i in nodes for t in range(adj_matrix[i][m])]) <= 1
+                        )
+                        prob += (
+                            lpSum([Lamda[s][d][k][m][j][t] for j in nodes for t in range(adj_matrix[m][j])]) <= 1
+                        )
 
         # bandwidth
         for i in nodes:
@@ -139,27 +148,93 @@ class IntegerLinearProgram(object):
         # The problem is solved using PuLP's choice of Solver
         prob.solve(solver=solver)
 
-        NSuc = 0
         NTaf = 0
-        NPut = 0
+        NPut = defaultdict(int)
         for s in nodes:
             for d in nodes:
                 for k, var in enumerate(S[s][d]):
                     if var.value() == 1.0:
-                        NSuc += 1
-                        NPut += traffic_matrix[s][d][k].bandwidth
+                        NPut[traffic_matrix[s][d][k].security] += traffic_matrix[s][d][k].bandwidth
                 NTaf += len(traffic_matrix[s][d])
 
         logging.info('---------------------------------------------------------')
         logging.info("Status:{}".format(LpStatus[prob.status]))
+        print(NPut)
         logging.info('IntegerLinearProgram - run - The successfully allocate bandwidth is {} Gbps.'.format(NPut))
         logging.info('IntegerLinearProgram - run - The number of request is {}.'.format(NTaf))
-        logging.info('IntegerLinearProgram - run - We successfully map {}.'.format(NSuc))
-        logging.info('IntegerLinearProgram - run - The mapping rate is {:2f}'.format(NSuc / NTaf * 100))
 
+        blocked_traffic, success_traffic = self._result_converter(MultiDiG, Lamda, S, traffic_matrix)
+        Nsuc = sum([len(success_traffic[i]) for i in success_traffic])
+        Nblo = sum([len(blocked_traffic[i]) for i in blocked_traffic])
+        logging.info('IntegerLinearProgram - run - We successfully map {}.'.format(Nsuc))
+        logging.info('IntegerLinearProgram - run - The mapping rate is {:2f}'.format(Nsuc / NTaf * 100))
         result = Result()
-        result.set_attrs(NSuc, NTaf - NSuc, NTaf, {}, {})
+        result.set_attrs(Nsuc, Nblo, NTaf, blocked_traffic, success_traffic, traffic_matrix, MultiDiG)
+
+        self.export_ilp_result(Lamda, S)
+        # for v in prob.variables():
+        #     logging.info("{}={}".format(v.name, v.varValue))
         return result
+
+    def export_ilp_result(self, *args):
+        print(len(args))
+        return None
+
+    def _result_converter(self, MultiDiG, Lambda, S, traffic_matrix):
+        def callback():
+            # logging.info("{} - End points are \n{}.".format(__name__, pd.DataFrame(edges[start])))
+            end_point = {}
+            for end in edges[start].keys():
+                for t in edges[start][end].keys():
+                    if Lambda[int(s)][int(d)][k][int(start)][int(end)][t].value() == 1.0:
+                        if end in path:
+                            continue
+                        end_point[str(0+len(end_point.keys()))] = {'node': end, 'index': t}
+            if len(end_point.keys()) == 0:
+                logging.error('{} - No point has been found.'.format(__name__))
+            else:
+                if len(end_point.keys()) >= 2:
+                    logging.warning("{} - There exist more than two end points {}!!".format(__name__, [(end_point[key]['node'], end_point[key]['index']) for key in end_point.keys()]))
+                # logging.info("{} - Traffic origins from {} to {} employing {}-{}-{} as an intermediate.".
+                #              format(__name__, s, d, start, end_point['0']['node'], end_point['0']['index']))
+                path.append(end_point['0']['node'])
+                lightpath[start] = {'sin': end_point['0']['node'],
+                                    'index': end_point['0']['index'],
+                                    'level': MultiDiG[start][end_point['0']['node']][end_point['0']['index']]['level']}
+                MultiDiG[start][end_point['0']['node']][end_point['0']['index']]['bandwidth'] -= traffic_matrix[int(s)][int(d)][k].bandwidth
+                return end_point['0']['node']
+
+        success_traffic = defaultdict(list)
+        blocked_traffic = defaultdict(list)
+        edges = nx.to_dict_of_dicts(MultiDiG)
+        for s in MultiDiG.nodes:
+            for d in MultiDiG.nodes:
+                for k, var in enumerate(S[int(s)][int(d)]):
+                    traffic = traffic_matrix[int(s)][int(d)][k]
+                    if var.value() == 0.0:
+                        blocked_traffic[traffic.security].append(traffic)
+                        # logging.info("{} - Traffic {} is blocked.".format(__name__, traffic.__dict__))
+                        # logging.info("{}".format('-' * 100))
+                        continue
+                    traffic_matrix[int(s)][int(d)][k].blocked = False
+                    # logging.info("{} - Traffic {} is mapped.".format(__name__, traffic.__dict__))
+                    path = [s]
+                    lightpath = {}
+                    start = s
+
+                    while True:
+                        end = callback()
+                        if end is None:
+                            break
+                        if end == d:
+                            break
+                        start = end
+                    traffic_matrix[int(s)][int(d)][k].path = path
+                    traffic_matrix[int(s)][int(d)][k].lightpath = lightpath
+                    success_traffic[traffic.security].append(traffic)
+                    logging.info("{} - The whole path is {}.".format(__name__, path))
+                    logging.info("{}".format('-'*100))
+        return blocked_traffic, success_traffic
 
 
 class SuitableLightpathFirst(object):
