@@ -50,9 +50,9 @@ def simulate(nw: int, nconn: int, nl: int, solver='SLF-ML'):
 if __name__ == '__main__':
     logging.config.fileConfig('logconfig.ini')
 
-    nw = 4
+    nw = 2
     nl = 3
-    Nconn = 8
+    Nconn = 16
     border = Nconn + 1
     repeat_times = 50
     # todo check1
@@ -63,7 +63,7 @@ if __name__ == '__main__':
         # todo a final result class need to be constructed
         for _ in range(repeat_times):
             # todo check2
-            result = simulate(nw=nw, nconn=nconn, nl=nl, solver='ILP-SL')
+            result = simulate(nw=nw, nconn=nconn, nl=nl, solver='ILP-ML')
             # todo check3
             result_analysis = ResultAnalysisImpl(result)
             throughput = result_analysis.analyze_throughput_for_each_level()
@@ -76,7 +76,6 @@ if __name__ == '__main__':
             results.lightpath_utilization.append(lightpath_utilization[1])
 
         for attrs in ['success_mapping_rate', 'throughput', 'hops', 'lightpath_utilization']:
-            print(getattr(results, attrs))
             all_run_result = (np.average(np.array(getattr(results, attrs)), axis=0).tolist())
             logging.info('{} - {} - nw: {} nconn: {} nl: {} done, the {} is {}.'.
                          format(__file__, __name__, nw, nconn, nl, attrs, all_run_result))

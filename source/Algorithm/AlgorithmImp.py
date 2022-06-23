@@ -159,7 +159,6 @@ class IntegerLinearProgram(object):
 
         logging.info('---------------------------------------------------------')
         logging.info("Status:{}".format(LpStatus[prob.status]))
-        print(NPut)
         logging.info('IntegerLinearProgram - run - The successfully allocate bandwidth is {} Gbps.'.format(NPut))
         logging.info('IntegerLinearProgram - run - The number of request is {}.'.format(NTaf))
 
