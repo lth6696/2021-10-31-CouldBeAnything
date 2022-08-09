@@ -10,7 +10,9 @@ class Result(object):
         self.num_traffic_success_mapping = 0
         self.num_traffic_fail_mapping = 0
         self.num_traffic = 0
+        self.num_traffic_each_level = defaultdict(int)
         self.traffic_mapping_success_rate = 0
+        self.traffic_mapping_success_rate_each_level = []   # ['level1', 'level2', ...]
         self.set_block_traffic = {}
         self.set_success_traffic = {}
 
@@ -25,15 +27,21 @@ class Result(object):
         :param setblock: dict, the set of blocked traffic.
         :param setsuccess: dict, the set of success-map traffic
         """
+        for row in traffic_matrix:
+            for col in row:
+                for traffic in col:
+                    self.num_traffic_each_level[traffic.security] += 1
+
         self.num_traffic = nt
         self.num_traffic_success_mapping = nsuc
         self.num_traffic_fail_mapping = nfail
         self.set_block_traffic = setblock
         self.set_success_traffic = setsuccess
         self.traffic_mapping_success_rate = self._get_success_mapping_rate()
+        self.traffic_mapping_success_rate_each_level = [len(self.set_success_traffic[key])/self.num_traffic_each_level[key]*100
+                                                        for key in sorted(set(list(self.set_success_traffic)+list(self.set_block_traffic)))]
         self.traffic_matrix = traffic_matrix
         self.MultiDiG = MultiDiG
-
         self._verify_quantity_correct()
 
     def _get_success_mapping_rate(self):
@@ -49,9 +57,11 @@ class Result(object):
 class Results(object):
     def __init__(self):
         self.success_mapping_rate = []
+        self.success_mapping_rate_each_level = []
         self.throughput = []
         self.hops = []
         self.lightpath_utilization = []
+        self.level_deviation = []
 
 
 class ResultAnalysisImpl(object):
@@ -109,7 +119,8 @@ class ResultAnalysisImpl(object):
             for dst in range(len(self.result.traffic_matrix[src])):
                 for traffic in self.result.traffic_matrix[src][dst]:
                     if not traffic.blocked:
-                        throughput[traffic.security] += traffic.bandwidth / 1000    # transfer unit to Tb/s
+                        # transfer unit to Tb/s
+                        throughput[traffic.security] += traffic.bandwidth / 1000 * (len(traffic.path)-1)
                     else:
                         continue
         levels = sorted(list(throughput.keys()))

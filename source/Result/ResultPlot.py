@@ -85,7 +85,7 @@ class ResultPresentation(object):
         marker = ['o', 's', 'X', '*']
         line = ['-', '--', ':', '-.']
         map_vir = cm.get_cmap(name='gist_rainbow')
-        solver = ['ILP-SL', 'ILP-ML', 'FF-SL', 'FF-ML', 'SLF-ML']
+        solver = ['FF-SL', 'FF-ML', 'SLF-ML']
 
         if fsize is not None:
             style(*fsize)
@@ -115,7 +115,7 @@ class ResultPresentation(object):
         marker = ['o', 's', 'X', '^', 'p']
         line = ['-', '--', ':', '-.']
         map_vir = cm.get_cmap(name='gist_rainbow')
-        solver = ["LLF", "HLLF", "HBLLF", "SPF"]
+        solver = ['FF-SL', 'FF-ML', 'SLF-ML']
 
         if fsize is not None:
             style(*fsize)
@@ -132,8 +132,9 @@ class ResultPresentation(object):
         plt.yticks(rotation='vertical')
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
-        plt.xticks([i*5 for i in range(5)])
-        # plt.yticks([i for i in range(1, 5)])
+        # plt.xticks([i*5 for i in range(3)])
+        plt.yticks([i*4 for i in range(0, 5)])
+        plt.axhline(y=16, xmin=0.045, xmax=0.955, ls='-.', lw=1, color='#8B0000', label='Network Capacity')
         plt.grid(True, ls=':', lw=0.5, c='#d5d6d8')
         plt.tight_layout()
         plt.legend()
@@ -141,10 +142,14 @@ class ResultPresentation(object):
 
 
 if __name__ == '__main__':
-    result_json = json.load(open('../results_for_icocn.json'))
-    # var = 'success'
-    # ResultPresentation().plot_line_graph_for_icocn([result_json[var][x] for x in result_json[var].keys()],
-    #                                                x=[i for i in range(1, 21)],
-    #                                                ylabel='Success Mapping Rate (%)',
-    #                                                xlabel='Number of Traffic Matrix')
-    print(np.mean(result_json['level_deviation']['LLF-L'])-np.mean(result_json['level_deviation']['LLF-LHB']))
+    result_json = json.load(open('../results_for_sci.json'))
+    var = 'network_capacity'
+    # ResultPresentation().plot_line_graph_for_icocn([[np.sum(row) for row in result_json[solver][var]] for solver in ['FF-SL', 'FF-ML', 'SLF-ML']],
+    # ResultPresentation().plot_line_graph_for_icocn([[row[2] for row in result_json[solver][var]] for solver in ['FF-SL', 'FF-ML', 'SLF-ML']],
+    ResultPresentation().plot_line_graph_for_icocn([result_json[solver][var] for solver in ['FF-SL', 'FF-ML', 'SLF-ML']],
+                                                   x=[i for i in range(1, 41)],
+                                                   xlabel='Number of Traffic Matrix',
+                                                   ylabel='Throughput (Tb/s)',
+                                                   fsize=(8.6, 6.2)
+                                                   # fsize=(6, 4.5)
+                                                   )
