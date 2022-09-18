@@ -1,1 +1,1 @@
-from source.Input import InputImp
+from source.input import InputImp

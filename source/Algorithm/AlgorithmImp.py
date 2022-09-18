@@ -8,8 +8,8 @@ import networkx as nx
 from pulp import *
 from collections import defaultdict
 
-from source.Result.ResultAnalysis import Result
-from source.Input.InputImp import Traffic
+from source.result.ResultAnalysis import Result
+from source.input.InputImp import Traffic
 from source.simulator import LightPathBandwidth
 
 
@@ -242,7 +242,7 @@ class SecurityAwareServiceMappingAlgorithm(object):
         self.blocked_traffic = defaultdict(list)
         self.default = LightPathBandwidth
 
-    def simulate(self, MultiDiG: nx.classes.multidigraph.MultiDiGraph, traffic_matrix: list, slf=True,
+    def solve(self, MultiDiG: nx.classes.multidigraph.MultiDiGraph, traffic_matrix: list, slf=True,
                  multi_level=True):
         ntraffic = 0
         for row in traffic_matrix:
