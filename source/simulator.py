@@ -9,9 +9,9 @@ import json
 pd.set_option('display.max_columns', 100)
 pd.set_option('display.width', 1000)
 
-from source.Input.InputImp import InputImp
-from source.Result.ResultPlot import ResultPresentation
-from source.Result.ResultAnalysis import ResultAnalysisImpl, Results
+from .Input.InputImp import InputImp
+from .Result.ResultPlot import ResultPresentation
+from .Result.ResultAnalysis import ResultAnalysisImpl, Results
 from Algorithm.AlgorithmImp import *
 
 BaseLine = 1  # Gbps
