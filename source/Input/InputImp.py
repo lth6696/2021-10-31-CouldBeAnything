@@ -14,14 +14,14 @@ class Traffic(object):
     DefaultValue = -1
 
     def __init__(self, **kwargs):
-        self.src = Traffic.DefaultValue
-        self.dst = Traffic.DefaultValue
-        self.bandwidth = Traffic.DefaultValue
-        self.security = Traffic.DefaultValue
+        self.src = self.DefaultValue
+        self.dst = self.DefaultValue
+        self.bandwidth = self.DefaultValue
+        self.security = self.DefaultValue
         self.blocked = True
         self.block_reason = '0x00'      # 0x00 - No block; 0x01 - No path; 0x02 - No bandwidth
         self.path = []          # [node1, node2, ...]
-        self.lightpath = {}     # {ori: {sin: str, index: int, level: int}, ...}
+        self.path_level = []    # 记录途径路径的安全等级
 
         self._set_value(**kwargs)
 
@@ -123,33 +123,21 @@ class InputImp(object):
             bandwidth_matrix[int(source)][int(sink)].append(self.MultiDiG[source][sink][index]['bandwidth'])
         return bandwidth_matrix
 
-    def get_traffic_matrix(self, nl: int = 3, nconn: int = 4, lam: int = 6):
+    def get_traffic_matrix(self, nl: int, ntm: int, lam: int = 6):
         nodes = list(map(int, self.MultiDiG.nodes))
-        traffic_matrix = [[[] for _ in nodes] for _ in nodes]
+        traffic_matrix = np.empty(shape=(ntm, len(nodes), len(nodes)), dtype=object)
 
-        # np.random.seed(8)
-        for r in nodes:
-            for c in nodes:
-                if r == c:
-                    continue
-                for _ in range(nconn):
-                    bandwidth = np.random.poisson(lam)
-                    traffic_matrix[r][c].append(
-                        Traffic(src=r,
-                                dst=c,
-                                bandwidth=bandwidth,
-                                # security=np.random.randint(1, nl+1)
-                                security=int(np.random.uniform(1, nl+1)))
-                    )
-                    self.req_bandwidth += bandwidth
-        logging.info('InputImp - generate_traffic_matrix - The total throughput is {} Gbps.'.format(self.req_bandwidth))
+        for k in range(ntm):
+            for u in nodes:
+                for v in nodes:
+                    if u != v:
+                        traffic_matrix[k][u][v] = Traffic(src=u,
+                                                          dst=v,
+                                                          bandwidth=np.random.poisson(lam),
+                                                          security=int(np.random.uniform(1, nl+1))
+                                                          )
+                        self.req_bandwidth += traffic_matrix[k][u][v].bandwidth
+                    else:
+                        traffic_matrix[k][u][v] = None
+        logging.info('{} - {} - The total throughput is {} Gb/s.'.format(__file__, __name__, self.req_bandwidth))
         return traffic_matrix
-
-
-if __name__ == '__main__':
-    t = InputImp()
-    t.set_vertex_connection()
-    adj = t.get_adjacency_martix()
-    level = t.get_level_matrix()
-    traffic_matrix = t.get_traffic_matrix()
-    print(t.req_bandwidth)

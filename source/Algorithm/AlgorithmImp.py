@@ -2,6 +2,7 @@ import logging
 import math
 
 import networkx
+import numpy as np
 import pandas as pd
 import pulp.pulp
 import networkx as nx
@@ -10,7 +11,6 @@ from collections import defaultdict
 
 from source.result.ResultAnalysis import Result
 from source.input.InputImp import Traffic
-from source.simulator import LightPathBandwidth
 
 
 class IntegerLinearProgram(object):
@@ -168,7 +168,6 @@ class IntegerLinearProgram(object):
         logging.info('IntegerLinearProgram - run - We successfully map {}.'.format(Nsuc))
         logging.info('IntegerLinearProgram - run - The mapping rate is {:2f}'.format(Nsuc / NTaf * 100))
         result = Result()
-        result.set_attrs(Nsuc, Nblo, NTaf, blocked_traffic, success_traffic, traffic_matrix, MultiDiG)
 
         self.export_ilp_result(Lamda, S)
         # for v in prob.variables():
@@ -238,153 +237,144 @@ class IntegerLinearProgram(object):
 
 class SecurityAwareServiceMappingAlgorithm(object):
     def __init__(self):
-        self.success_traffic = defaultdict(list)
-        self.blocked_traffic = defaultdict(list)
-        self.default = LightPathBandwidth
+        self.routed_traffic = None
 
-    def solve(self, MultiDiG: nx.classes.multidigraph.MultiDiGraph, traffic_matrix: list, slf=True,
-                 multi_level=True):
-        ntraffic = 0
-        for row in traffic_matrix:
-            for col in row:
-                for traffic in col:
-                    ntraffic += 1
-                    if self._map_service(traffic, MultiDiG, slf, multi_level):
-                        self.success_traffic[traffic.security].append(traffic)
-                        traffic.blocked = False
+        # 默认常量，不可更改
+        self.STANDARD_BANDWIDTH = 100
+        self.ROUTED = 1
+        self.BLOCKED = -1
+
+    def solve(self,
+              graph: nx.MultiDiGraph,
+              traffic_matrix: np.matrix,
+              scheme: str
+              ):
+        """
+        本方法求解
+        :param graph: MultiDiGraph, 有向多边图
+        :param traffic_matrix: np.matrix, 流量矩阵，目前数据结构为列表，后续更改为矩阵
+        :param str: str, 两种方案，越级和非越级
+        :return: 仿真结果
+        """
+        (page, row, col) = traffic_matrix.shape
+
+        # 初始化矩阵变量记录业务路由情况, 1为成功，-1为阻塞，0为业务不存在
+        self.routed_traffic = np.zeros(shape=(page, row, col))
+
+        # 为每条业务路由
+        for k in range(page):
+            for u in range(row):
+                for v in range(col):
+                    if u == v:
+                        continue
+                    if self._is_routed(traffic_matrix[k][u][v], graph, scheme):
+                        self.routed_traffic[k][u][v] = self.ROUTED
+                        traffic_matrix[k][u][v].blocked = False
                     else:
-                        self.blocked_traffic[traffic.security].append(traffic)
-        Nsuc = sum([len(self.success_traffic[i]) for i in self.success_traffic])
-        Nblo = sum([len(self.blocked_traffic[i]) for i in self.blocked_traffic])
-        result = Result()
-        result.set_attrs(Nsuc, Nblo, ntraffic, self.blocked_traffic, self.success_traffic, traffic_matrix, MultiDiG)
-        return result
+                        self.routed_traffic[k][u][v] = self.BLOCKED
 
-    def _map_service(self, traffic, MultiDiG, slf, multi_level):
-        src = traffic.src
-        dst = traffic.dst
+        # 统计实验结果
+        re = Result(
+            graph=graph,
+            traffic_matrix=traffic_matrix
+        )
+        return re
+
+    def _is_routed(self,
+                   traffic: Traffic,
+                   graph: nx.MultiDiGraph,
+                   scheme: str
+                   ):
+        # 初始化单边有向图
         G = nx.DiGraph()
-        G.add_nodes_from(MultiDiG.nodes)
-        if slf:
-            self._add_lightpaths_slf(G, traffic, MultiDiG)
-        else:
-            self._add_lightpaths_ff(G, traffic, MultiDiG, multi_level)
+        G.add_nodes_from(graph.nodes)
+
+        # 筛选并添加边缘
+        self._add_edges(G, graph, traffic.security, scheme)
+
         try:
-            path = nx.shortest_path(G, str(src), str(dst), weight='cost')
-        except:
-            traffic.block_reason = '0x01'
-            return False
-        lightpaths = list(zip(path[:-1], path[1:]))
-        if self._allocate_bandwidth(G, MultiDiG, lightpaths, traffic):
+            # 最短路径计算
+            path = nx.shortest_path(G, str(traffic.src), str(traffic.dst), weight='cost')
+            path_segments = list(zip(path[:-1], path[1:]))
+            # 预留带宽
+            is_reserved = self._reserve_bandwidth(G, graph, path_segments, traffic)
+            if not is_reserved:
+                raise ValueError
             traffic.path = path
-            return True
-        else:
-            traffic.block_reason = '0x02'
-            return False
-
-    def _add_lightpaths_ff(self, graph, traffic, MultiDiG, multi_level):
-        nodes = list(MultiDiG.nodes)
-        for ori in nodes:
-            for sin in nodes:
-                try:
-                    parallel_lightpaths = dict(MultiDiG[ori][sin])
-                    lightpath = (-1, 0)  # (index, ava_bandwidth)
-                    for index in parallel_lightpaths:
-                        if parallel_lightpaths[index]['level'] > traffic.security:
-                            continue
-                        if multi_level == False and parallel_lightpaths[index]['level'] < traffic.security:
-                            continue
-                        # 基于First-Fit思路，最大可用带宽优先
-                        bandwidth_to_compare = parallel_lightpaths[index]['bandwidth']
-                        if bandwidth_to_compare > lightpath[1]:
-                            lightpath = (index, bandwidth_to_compare)
-                        else:
-                            continue
-                    if lightpath == (-1, 0):
-                        raise Exception('Something went wrong.')
-                    graph.add_edge(ori, sin)
-                    graph[ori][sin]['index'] = lightpath[0]
-                    graph[ori][sin]['level'] = parallel_lightpaths[lightpath[0]]['level']
-                    graph[ori][sin]['bandwidth'] = lightpath[1]
-                    graph[ori][sin]['cost'] = self.default / max(float(lightpath[1]), 1e-5)
-                except:
-                    # 不存在并行光路
-                    continue
-
-    def _add_lightpaths_slf(self, graph, traffic, MultiDiG):
-        nodes = list(MultiDiG.nodes)
-        for ori in nodes:
-            for sin in nodes:
-                try:
-                    parallel_lightpaths = dict(MultiDiG[ori][sin])
-                    lightpath_equal_level = sorted([(index, parallel_lightpaths[index]['bandwidth'])
-                                                    for index in parallel_lightpaths
-                                                    if parallel_lightpaths[index]['level'] == traffic.security],
-                                                   key=lambda x: x[1],
-                                                   reverse=True)
-                    # 若不存在需求等级光路
-                    if not lightpath_equal_level:
-                        # 找出高于需求的光路
-                        lightpath_bigger_level = sorted(
-                            [(index, parallel_lightpaths[index]['bandwidth'] / (
-                                    traffic.security - parallel_lightpaths[index]['level']))
-                             for index in parallel_lightpaths
-                             if parallel_lightpaths[index]['level'] < traffic.security],
-                            key=lambda x: x[1],
-                            reverse=True
-                        )
-                        # 若光路不存在，则抛出异常
-                        if not lightpath_bigger_level:
-                            raise Exception('Something went wrong.')
-                        symbol_ligthpath = lightpath_bigger_level[0]
-                        lightpath_equal_hindex = [lightpath for lightpath in lightpath_bigger_level
-                                                  if lightpath[1] == symbol_ligthpath[1]]
-                        # 若存在多个相等权重的光路
-                        if lightpath_equal_hindex:
-                            # 比较光路非本等级业务抢占的带宽，取小值
-                            lightpath_occupy_bandwidth = []
-                            for lightpath in lightpath_equal_hindex:
-                                occupy_traffic = MultiDiG[ori][sin][lightpath[0]]['traffic']
-                                if occupy_traffic:
-                                    occupy_bandwidth = sum([t[2] for t in occupy_traffic if t[3] != traffic.security])
-                                    lightpath_occupy_bandwidth.append((lightpath[0], occupy_bandwidth))
-                                else:
-                                    lightpath_occupy_bandwidth.append((lightpath[0], 0))
-                            lightpath_occupy_bandwidth.sort(key=lambda x: x[1], reverse=False)
-                            lightpath = lightpath_occupy_bandwidth[0]
-                        else:
-                            # 去H最大的高等光路
-                            lightpath = lightpath_bigger_level[0]
-                    else:
-                        # 取带宽最大的同等级光路
-                        lightpath = lightpath_equal_level[0]
-                    graph.add_edge(ori, sin)
-                    index = lightpath[0]
-                    bandwidth = MultiDiG[ori][sin][lightpath[0]]['bandwidth']
-                    graph[ori][sin]['index'] = index
-                    graph[ori][sin]['level'] = MultiDiG[ori][sin][index]['level']
-                    graph[ori][sin]['bandwidth'] = bandwidth
-                    graph[ori][sin]['cost'] = self.default / max(bandwidth, 1e-5)
-                except:
-                    continue
-
-    def _allocate_bandwidth(self,
-                            G: nx.DiGraph,
-                            MultiDiG: nx.MultiDiGraph,
-                            lightpaths: list,
-                            traffic: Traffic,
-                            ):
-        if not lightpaths:
-            return False
-        (start, end) = lightpaths[0]
-        if G[start][end]['bandwidth'] < traffic.bandwidth:
-            return False
-        if lightpaths[1:] and not self._allocate_bandwidth(G, MultiDiG, lightpaths[1:], traffic):
+        except:
             return False
         else:
-            index = G[start][end]['index']
-            MultiDiG[start][end][index]['bandwidth'] -= traffic.bandwidth
-            MultiDiG[start][end][index]['traffic'].append(
-                (traffic.src, traffic.dst, traffic.bandwidth, traffic.security))
-            traffic.lightpath[start] = {'sin': end, 'index': index, 'level': G[start][end]['level']}
             return True
+
+    def _add_edges(self,
+                   G: nx.DiGraph,
+                   graph: nx.MultiDiGraph,
+                   req_security: int,
+                   scheme: str
+                   ):
+        """
+        光路添加算法分为多个步骤：
+        1 - 变量初始化
+        2 - 边路所有边缘
+        3 - 添加边缘
+        :param G: nx.DiGraph, 有向图
+        :param req_security: int, 请求安全等级
+        :param scheme: str, 越级方案
+        :return: bool, 布尔值
+        """
+        nodes = list(map(str, graph.nodes))
+        for u in nodes:
+            for v in nodes:
+                if not graph.has_edge(u, v):
+                    continue
+                if scheme == 'LBMS':
+                    pass
+                elif scheme == 'LSMS':
+                    edges_with_same_level = {t: graph[u][v][t] for t in graph[u][v] if graph[u][v][t]['level'] == req_security}
+                    if not edges_with_same_level:
+                        continue
+                    t = max(edges_with_same_level.keys(), key=lambda x: edges_with_same_level[x]['bandwidth'])
+                    edge = edges_with_same_level[t]
+                else:
+                    raise ValueError('Do not understand scheme: {}.'.format(scheme))
+                G.add_edge(
+                    u, v,
+                    index=t,
+                    level=edge['level'],
+                    bandwidth=edge['bandwidth'],
+                    cost=1-edge['bandwidth']/self.STANDARD_BANDWIDTH
+                )
+                # print(G[u][v]['cost'])
+
+    def _reserve_bandwidth(self,
+                           G: nx.DiGraph,
+                           graph: nx.MultiDiGraph,
+                           path_seg: list,
+                           traffic: Traffic,
+                           ):
+        """
+        本方法从前向后检查带宽多寡，从后向前预留带宽
+        :param graph: nx.MultiDiGraph, 多边有向图
+        :param path_seg: list, 路径分段集合，其包含多组(u, v)对
+        :param traffic: obj, 流量对象
+        :return: bool, 是否成功预留带宽
+        """
+        (u, v) = path_seg.pop(0)
+        # 判断路径带宽是否足够
+        if G[u][v]['bandwidth'] < traffic.bandwidth:
+            return False
+        # 若当前为最后一跳，即路径分段为空集合
+        if not path_seg:
+            graph[u][v][G[u][v]['index']]['bandwidth'] -= traffic.bandwidth
+            traffic.path_level.insert(0, G[u][v]['level'])
+            return True
+        # 若不为最后一跳，则向后递归
+        else:
+            # 若后继成功预留带宽，则继续向前预留
+            if self._reserve_bandwidth(G, graph, path_seg, traffic):
+                graph[u][v][G[u][v]['index']]['bandwidth'] -= traffic.bandwidth
+                traffic.path_level.insert(0, G[u][v]['level'])
+                return True
+            # 若后继带宽不足，则不会预留带宽
+            else:
+                return False

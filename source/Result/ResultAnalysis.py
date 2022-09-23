@@ -1,221 +1,70 @@
 import networkx as nx
 import numpy as np
 from collections import defaultdict
-
 import pandas
 
 
 class Result(object):
-    def __init__(self):
-        self.num_traffic_success_mapping = 0
-        self.num_traffic_fail_mapping = 0
-        self.num_traffic = 0
-        self.num_traffic_each_level = defaultdict(int)
-        self.traffic_mapping_success_rate = 0
-        self.traffic_mapping_success_rate_each_level = []   # ['level1', 'level2', ...]
-        self.set_block_traffic = {}
-        self.set_success_traffic = {}
+    """
+    统计单次实验结果，结果包含如下几种：
+    1 - 成功率 t
+    2 - 平均跳数 t
+    3 - 吞吐量 t
+    4 - 平均链路利用率 g
+    5 - 安全等级偏差 t
+    """
+    def __init__(self,
+                 graph: nx.MultiDiGraph,
+                 traffic_matrix: np.ndarray
+                 ):
+        # 默认值
+        self.LightPathBandwidth = 100 # Gb/s
 
-        self.traffic_matrix = None
-        self.MultiDiG = None
-
-    def set_attrs(self, nsuc: int, nfail: int, nt: int, setblock: dict, setsuccess: dict, traffic_matrix: list, MultiDiG: nx.MultiDiGraph):
-        """
-        :param nsuc: int, the number of traffic that success to map.
-        :param nfail: int, the number of traffic that fail to map.
-        :param nt: int, the number of traffic.
-        :param setblock: dict, the set of blocked traffic.
-        :param setsuccess: dict, the set of success-map traffic
-        """
-        for row in traffic_matrix:
-            for col in row:
-                for traffic in col:
-                    self.num_traffic_each_level[traffic.security] += 1
-
-        self.num_traffic = nt
-        self.num_traffic_success_mapping = nsuc
-        self.num_traffic_fail_mapping = nfail
-        self.set_block_traffic = setblock
-        self.set_success_traffic = setsuccess
-        self.traffic_mapping_success_rate = self._get_success_mapping_rate()
-        self.traffic_mapping_success_rate_each_level = [len(self.set_success_traffic[key])/self.num_traffic_each_level[key]*100
-                                                        for key in sorted(set(list(self.set_success_traffic)+list(self.set_block_traffic)))]
+        # 输入
+        self.graph = graph
         self.traffic_matrix = traffic_matrix
-        self.MultiDiG = MultiDiG
-        self._verify_quantity_correct()
 
-    def _get_success_mapping_rate(self):
-        if self.num_traffic == 0:
-            raise Exception('The number of traffic can not be zero.')
-        return self.num_traffic_success_mapping / self.num_traffic * 100
+        # 结果变量
+        self.mapping_rate = 0
+        self.throughput = 0
+        self.ave_hops = 0
+        self.ave_link_utilization = 0
+        self.ave_level_deviation = 0
 
-    def _verify_quantity_correct(self):
-        if self.num_traffic != self.num_traffic_success_mapping + self.num_traffic_fail_mapping:
-            raise Exception('Quantity relationship is wrong.')
+        self._get_results()
 
+    def _get_results(self):
+        (page, row, col) = self.traffic_matrix.shape
 
-class Results(object):
-    def __init__(self):
-        self.success_mapping_rate = []
-        self.success_mapping_rate_each_level = []
-        self.throughput = []
-        self.hops = []
-        self.lightpath_utilization = []
-        self.level_deviation = []
+        # 初始化空矩阵
+        routed_traffic_matrix = np.zeros(shape=(page, row, col))
+        ave_hops_matrix = np.ones(shape=(page, row, col)) * -1
+        throughput_matrix = np.zeros(shape=(page, row, col))
+        ave_level_deviation_matrix = np.ones(shape=(page, row, col)) * -1
 
-
-class ResultAnalysisImpl(object):
-    def __init__(self, result: Result):
-        self.result = result
-
-    def analysis_traffic_block_rate_under_different_situation(self, result: Result):
-        """
-        analysis_result_to_matrix:
-                situation1  situation2  ...
-        level1        0.0%        0.0%  ...
-        level2        0.0%        0.0%  ...
-           ...         ...         ...  ...
-        """
-        analysis_result = {}    # {level1: {'0x01': int, '0x02': int, ...}, ...}
-        for key in result.set_block_traffic.keys():
-            analysis_result[key] = defaultdict(int)
-            for traffic in result.set_block_traffic[key]:
-                analysis_result[key][traffic['block_reason']] += 1
-        # situations = set()
-        # for key in analysis_result:
-        #     situations |= set(analysis_result[key].keys())
-        # situations = sorted(situations)
-        situations = ['0x01', '0x02']
-        analysis_result_to_matrix = [[] for _ in range(len(analysis_result.keys()))]
-        for i, level in enumerate(sorted(analysis_result.keys())):
-            analysis_result_to_matrix[i].append(level)
-            for situation in situations:
-                if situation in analysis_result[level].keys():
-                    analysis_result_to_matrix[i].append(
-                        analysis_result[level][situation] / result.num_traffic * 100
-                    )
-                else:
-                    analysis_result_to_matrix[i].append(0.0)
-        return analysis_result_to_matrix
-
-    def analyze_level_distribution_for_lightpath(self, MultiDiG: nx.MultiDiGraph):
-        analysis_result = defaultdict(int)
-        levels = set()
-        for (ori, sin, index) in MultiDiG.edges:
-            level = MultiDiG[ori][sin][index]['level']
-            levels |= {level}
-            analysis_result[level] += 1
-        levels = sorted(levels)
-        analysis_result_to_matrix = [analysis_result[key] for key in levels]
-        return analysis_result_to_matrix
-
-    def analyze_throughput_for_each_level(self, precision=1e3):
-        """
-                          level1  level2  level3  ...
-        throughput(Tb/s)     tp1     tp2     tp3  ...
-        """
-        throughput = defaultdict(int)
-        for src in range(len(self.result.traffic_matrix)):
-            for dst in range(len(self.result.traffic_matrix[src])):
-                for traffic in self.result.traffic_matrix[src][dst]:
-                    if not traffic.blocked:
-                        # transfer unit to Tb/s
-                        throughput[traffic.security] += traffic.bandwidth / 1000 * (len(traffic.path)-1)
-                    else:
+        for k in range(page):
+            for u in range(row):
+                for v in range(col):
+                    traffic = self.traffic_matrix[k][u][v]
+                    if traffic is None:
                         continue
-        levels = sorted(list(throughput.keys()))
-        throughput_to_standard_format = [levels] + [[int(throughput[key]*precision)/precision for key in levels]]
-        return throughput_to_standard_format
+                    if traffic.blocked == False:
+                        routed_traffic_matrix[k][u][v] = 1
+                        ave_hops_matrix[k][u][v] = len(traffic.path)-1
+                        throughput_matrix[k][u][v] = traffic.bandwidth
+                        ave_level_deviation_matrix[k][u][v] = (np.sum((traffic.security - np.array(traffic.path_level))**2)/len(traffic.path_level))**0.5
 
-    def analyze_link_utilization_for_each_level(self, LightPathBandwidth, precision=1e3):
-        """
-                            level1  level2  level3  ...
-        link utilization(%)    lu1     lu2     lu3  ...
-        """
-        link_utilization = defaultdict(list)
-        for (ori, sin, index) in self.result.MultiDiG.edges:
-            link_utilization[self.result.MultiDiG[ori][sin][index]['level']].append(
-                1 - self.result.MultiDiG[ori][sin][index]['bandwidth'] / LightPathBandwidth
-            )
-        levels = sorted(list(link_utilization.keys()))
-        link_utilization_to_standard_format = [levels] + [[int(np.mean(link_utilization[level])*precision)/precision for level in levels]]
-        return link_utilization_to_standard_format
+        ave_link_utilization_matrix = np.ones(shape=(row, col)) * -1
+        for (u, v, t) in self.graph.edges:
+            link_utilization = (1 - self.graph[u][v][t]['bandwidth'] / self.LightPathBandwidth) * 100
+            [u, v] = map(int, [u, v])
+            if ave_link_utilization_matrix[u][v] == -1:
+                ave_link_utilization_matrix[u][v] = link_utilization
+            else:
+                ave_link_utilization_matrix[u][v] = np.mean([link_utilization, ave_link_utilization_matrix[u][v]])
 
-    def analyze_deviation_for_each_level(self, precision=1e3):
-        """
-                            level1  level2  level3  ...
-        level deviation(%)     ld1     ld2     ld3  ...
-        """
-        level_deviation = defaultdict(list)
-        for src in range(len(self.result.traffic_matrix)):
-            for dst in range(len(self.result.traffic_matrix[src])):
-                for traffic in self.result.traffic_matrix[src][dst]:
-                    delta = []
-                    if not traffic.blocked:
-                        for ori in traffic.lightpath:
-                            delta += [(traffic.lightpath[ori]['level'] - traffic.security) ** 2]
-                        level_deviation[traffic.security].append((sum(delta)/len(delta))**0.5)
-                    else:
-                        continue
-        levels = sorted(list(level_deviation.keys()))
-        level_deviation_to_standard_format = [levels] + [[int(np.mean(level_deviation[level])*precision)/precision for level in levels]]
-        return level_deviation_to_standard_format
-
-    def analyze_hop_for_each_level(self):
-        """
-            level1  level2  level3  ...
-        hop     h1      h2      h3  ...
-        """
-        hop = defaultdict(list)
-        for src in range(len(self.result.traffic_matrix)):
-            for dst in range(len(self.result.traffic_matrix[src])):
-                for traffic in self.result.traffic_matrix[src][dst]:
-                    if not traffic.blocked:
-                        hop[traffic.security].append(len(traffic.path)-1)
-                    else:
-                        continue
-        levels = sorted(list(hop.keys()))
-        hop_to_standard_format = [levels] + [[np.mean(hop[level]) for level in levels]]
-        return hop_to_standard_format
-
-    def analyze_success_rate_for_each_level(self):
-        """
-                level1  level2  level3  ...
-        success     s1     s2      s3   ...
-        """
-        success = defaultdict(int)
-        ntraffic = defaultdict(int)
-        for src in range(len(self.result.traffic_matrix)):
-            for dst in range(len(self.result.traffic_matrix[src])):
-                for traffic in self.result.traffic_matrix[src][dst]:
-                    ntraffic[traffic.security] += 1
-                    if not traffic.blocked:
-                        success[traffic.security] += 1
-                    else:
-                        continue
-        levels = sorted(list(success.keys()))
-        success_to_standard_format = [levels] + [[success[level]/ntraffic[level]*100 for level in levels]]
-        return success_to_standard_format
-
-    def analyze_each_lightpath_utilization(self, LightPathBandwidth, level_filter: tuple = (0, 0)):
-        """
-
-        :param LightPathBandwidth:
-        :param level_filter: a * x = b -> (a, b)
-        :return:
-        """
-        a, b = level_filter
-        nodes = self.result.MultiDiG.nodes
-        Nnodes = len(nodes)
-        utilization_matrix = np.zeros((Nnodes, Nnodes))
-        temp_matrix = [[[] for _ in range(Nnodes)] for _ in range(Nnodes)]
-        for (ori, sin, index) in self.result.MultiDiG.edges:
-            if a * self.result.MultiDiG[ori][sin][index]['level'] == b:
-                temp_matrix[int(ori)][int(sin)].append(
-                    1 - (self.result.MultiDiG[ori][sin][index]['bandwidth']/LightPathBandwidth)
-                )
-        for s in range(Nnodes):
-            for d in range(Nnodes):
-                utilization_matrix[s][d] = np.mean(temp_matrix[s][d])
-        print(pandas.DataFrame(utilization_matrix))
-        return utilization_matrix
+        self.mapping_rate = np.sum(routed_traffic_matrix) / (page*row*(col-1))
+        self.throughput = np.sum(throughput_matrix)  # Gb/s
+        self.ave_hops = np.mean(ave_hops_matrix[ave_hops_matrix != -1])
+        self.ave_link_utilization = np.mean(ave_link_utilization_matrix[ave_link_utilization_matrix != -1])
+        self.ave_level_deviation = np.mean(ave_level_deviation_matrix[ave_level_deviation_matrix != -1])
