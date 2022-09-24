@@ -226,6 +226,8 @@ if __name__ == '__main__':
          [96.98, 95.18, 92.01, 86.18],
          [97.08, 95.42, 92.82, 85.33],
          [91.82, 88.07, 81.51, 76.19]]
+    # ILP-LSMS =   [93.8, 90.2, 85.8, 80.4]
+    # SASMA-LSMS = [92.2, 90.8, 84.6, 75.2]
     solver = ['ILP-LBMS', 'ILP-LSMS', 'SASMA-ISv1', 'SASMA-ISv2', 'SASMA-LSMS']
     for i, scheme in enumerate(y):
         plt.plot(K, scheme, marker=marker[i], ms=2, ls=line[i%4], lw=0.5, color=map_vir((i+1)/len(y)), label=solver[i])

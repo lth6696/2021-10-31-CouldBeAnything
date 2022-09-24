@@ -17,9 +17,9 @@ class IntegerLinearProgram(object):
     def __init__(self):
         pass
 
-    def run(self, MultiDiG, adj_matrix, level_matrix, bandwidth_matrix, traffic_matrix, multi_level=True):
+    def run(self, MultiDiG, adj_matrix, level_matrix, bandwidth_matrix, traffic_matrix, scheme):
         prob = LpProblem("ServiceMapping", LpMaximize)
-        solver = getSolver('CPLEX_CMD', timeLimit=100)
+        # print(listSolvers(onlyAvailable=True))
 
         row, col = len(adj_matrix), len(adj_matrix)
         nodes = [i for i in range(row)]
@@ -30,7 +30,7 @@ class IntegerLinearProgram(object):
             tempS = []
             for d in nodes:
                 tempD = []
-                for k in range(len(traffic_matrix[s][d])):
+                for k in range(len(traffic_matrix)):
                     tempK = []
                     for i in nodes:
                         tempI = []
@@ -54,7 +54,7 @@ class IntegerLinearProgram(object):
             temp_src = []
             for d in nodes:
                 tempD = []
-                for k in range(len(traffic_matrix[s][d])):
+                for k in range(len(traffic_matrix)):
                     tempD.append(LpVariable("Suc_{}_{}_{}".format(s, d, k),
                                             lowBound=0, upBound=1, cat=LpInteger))
                 temp_src.append(tempD)
@@ -63,14 +63,14 @@ class IntegerLinearProgram(object):
         # Objective
         # The objective function is added to 'prob' first
         prob += (
-            lpSum([S[s][d][k] for s in nodes for d in nodes for k in range(len(traffic_matrix[s][d]))])
+            lpSum([S[s][d][k] for s in nodes for d in nodes for k in range(len(traffic_matrix))])
         )
 
         # Constraints
         # continuity
         for s in nodes:
             for d in nodes:
-                for k in range(len(traffic_matrix[s][d])):
+                for k in range(len(traffic_matrix)):
                     prob += (
                             lpSum([Lamda[s][d][k][s][j][t] for j in nodes for t in range(adj_matrix[s][j])])
                             == S[s][d][k]
@@ -90,7 +90,7 @@ class IntegerLinearProgram(object):
 
         for s in nodes:
             for d in nodes:
-                for k in range(len(traffic_matrix[s][d])):
+                for k in range(len(traffic_matrix)):
                     for m in nodes:
                         if m == s or m == d:
                             continue
@@ -110,129 +110,106 @@ class IntegerLinearProgram(object):
             for j in nodes:
                 for t in range(adj_matrix[i][j]):
                     prob += (
-                            lpSum([Lamda[s][d][k][i][j][t] * traffic_matrix[s][d][k].bandwidth for s in nodes for d in
-                                   nodes for k in range(len(traffic_matrix[s][d]))])
+                            lpSum([Lamda[s][d][k][i][j][t] * traffic_matrix[k][s][d].bandwidth for s in nodes for d in
+                                   nodes for k in range(len(traffic_matrix)) if traffic_matrix[k][s][d]])
                             <= bandwidth_matrix[i][j][t]
                     )
 
         for s in nodes:
             for d in nodes:
-                for k in range(len(traffic_matrix[s][d])):
+                for k in range(len(traffic_matrix)):
+                    if not traffic_matrix[k][s][d]:
+                        continue
                     prob += (
                             lpSum([Lamda[s][d][k][s][j][t] for j in nodes for t in range(adj_matrix[s][j])])
-                            <= traffic_matrix[s][d][k].bandwidth
+                            <= traffic_matrix[k][s][d].bandwidth
                     )
                     prob += (
                             lpSum([Lamda[s][d][k][i][d][t] for i in nodes for t in range(adj_matrix[i][d])])
-                            <= traffic_matrix[s][d][k].bandwidth
+                            <= traffic_matrix[k][s][d].bandwidth
                     )
 
         # level
         for s in nodes:
             for d in nodes:
-                for k in range(len(traffic_matrix[s][d])):
+                for k in range(len(traffic_matrix)):
+                    if not traffic_matrix[k][s][d]:
+                        continue
                     for i in nodes:
                         for j in nodes:
                             for t in range(adj_matrix[i][j]):
                                 prob += (
-                                        traffic_matrix[s][d][k].security / level_matrix[i][j][t] >=
+                                        traffic_matrix[k][s][d].security / level_matrix[i][j][t] >=
                                         Lamda[s][d][k][i][j][t]
                                 )
                                 # extra condition to limit the level-cross, which can be ignore
-                                if not multi_level:
+                                if scheme == 'LSMS':
                                     prob += (
-                                            (traffic_matrix[s][d][k].security / level_matrix[i][j][t] - 1 / 1e4) *
+                                            (traffic_matrix[k][s][d].security / level_matrix[i][j][t] - 1 / 1e4) *
                                             Lamda[s][d][k][i][j][t] <= 1
                                     )
 
         # The problem is solved using PuLP's choice of Solver
-        prob.solve(solver=solver)
+        prob.solve(CPLEX_CMD(msg=False, timelimit=100))
 
-        NTaf = 0
-        NPut = defaultdict(int)
-        for s in nodes:
-            for d in nodes:
-                for k, var in enumerate(S[s][d]):
-                    if var.value() == 1.0:
-                        NPut[traffic_matrix[s][d][k].security] += traffic_matrix[s][d][k].bandwidth
-                NTaf += len(traffic_matrix[s][d])
-
-        logging.info('---------------------------------------------------------')
-        logging.info("Status:{}".format(LpStatus[prob.status]))
-        logging.info('IntegerLinearProgram - run - The successfully allocate bandwidth is {} Gbps.'.format(NPut))
-        logging.info('IntegerLinearProgram - run - The number of request is {}.'.format(NTaf))
-
-        blocked_traffic, success_traffic = self._result_converter(MultiDiG, Lamda, S, traffic_matrix)
-        Nsuc = sum([len(success_traffic[i]) for i in success_traffic])
-        Nblo = sum([len(blocked_traffic[i]) for i in blocked_traffic])
-        logging.info('IntegerLinearProgram - run - We successfully map {}.'.format(Nsuc))
-        logging.info('IntegerLinearProgram - run - The mapping rate is {:2f}'.format(Nsuc / NTaf * 100))
-        result = Result()
-
-        self.export_ilp_result(Lamda, S)
-        # for v in prob.variables():
-        #     logging.info("{}={}".format(v.name, v.varValue))
+        result = self._result_converter(Lamda,
+                                        S,
+                                        MultiDiG,
+                                        traffic_matrix)
         return result
 
-    def export_ilp_result(self, *args):
-        print(len(args))
-        return None
+    def _result_converter(self,
+                          lambda_: list,
+                          s_: list,
+                          graph: nx.MultiDiGraph,
+                          traffic_matrix: np.ndarray
+                          ):
+        def find_next_node(
+                current: int,
+                variable: list
+        ):
+            # 从相邻节点内找出下一跳节点
+            next = [
+                (int(neighbor), t)
+                for neighbor in graph.neighbors(str(current))    # 遍历邻居节点
+                for t, var in enumerate(variable[current][int(neighbor)])   # 遍历平行边缘
+                if var.value() == 1.0   # 判断边缘是否被采用
+            ]
+            if len(next) == 0 or len(next) > 1:
+                raise ValueError
+            return next.pop()
 
-    def _result_converter(self, MultiDiG, Lambda, S, traffic_matrix):
-        def callback():
-            # logging.info("{} - End points are \n{}.".format(__name__, pd.DataFrame(edges[start])))
-            end_point = {}
-            for end in edges[start].keys():
-                for t in edges[start][end].keys():
-                    if Lambda[int(s)][int(d)][k][int(start)][int(end)][t].value() == 1.0:
-                        if end in path:
-                            continue
-                        end_point[str(0+len(end_point.keys()))] = {'node': end, 'index': t}
-            if len(end_point.keys()) == 0:
-                logging.error('{} - No point has been found.'.format(__name__))
-            else:
-                if len(end_point.keys()) >= 2:
-                    logging.warning("{} - There exist more than two end points {}!!".format(__name__, [(end_point[key]['node'], end_point[key]['index']) for key in end_point.keys()]))
-                # logging.info("{} - Traffic origins from {} to {} employing {}-{}-{} as an intermediate.".
-                #              format(__name__, s, d, start, end_point['0']['node'], end_point['0']['index']))
-                path.append(end_point['0']['node'])
-                lightpath[start] = {'sin': end_point['0']['node'],
-                                    'index': end_point['0']['index'],
-                                    'level': MultiDiG[start][end_point['0']['node']][end_point['0']['index']]['level']}
-                MultiDiG[start][end_point['0']['node']][end_point['0']['index']]['bandwidth'] -= traffic_matrix[int(s)][int(d)][k].bandwidth
-                return end_point['0']['node']
-
-        success_traffic = defaultdict(list)
-        blocked_traffic = defaultdict(list)
-        edges = nx.to_dict_of_dicts(MultiDiG)
-        for s in MultiDiG.nodes:
-            for d in MultiDiG.nodes:
-                for k, var in enumerate(S[int(s)][int(d)]):
-                    traffic = traffic_matrix[int(s)][int(d)][k]
-                    if var.value() == 0.0:
-                        blocked_traffic[traffic.security].append(traffic)
-                        # logging.info("{} - Traffic {} is blocked.".format(__name__, traffic.__dict__))
-                        # logging.info("{}".format('-' * 100))
+        (K, row, col) = traffic_matrix.shape
+        for k in range(K):
+            for u in range(row):
+                for v in range(col):
+                    # 判断业务是否被路由
+                    if s_[u][v][k].value() == 0.0:
                         continue
-                    traffic_matrix[int(s)][int(d)][k].blocked = False
-                    # logging.info("{} - Traffic {} is mapped.".format(__name__, traffic.__dict__))
-                    path = [s]
-                    lightpath = {}
-                    start = s
-
+                    else:
+                        traffic_matrix[k][u][v].blocked = False
+                    # 获取路由业务路径
+                    src = u
+                    path = [src]
                     while True:
-                        end = callback()
-                        if end is None:
+                        current = path[-1]
+                        try:
+                            (next, index) = find_next_node(current, lambda_[u][v][k])
+                        except:
+                            traffic_matrix[k][u][v].blocked = True
                             break
-                        if end == d:
+                        # 预留带宽
+                        graph[str(current)][str(next)][index]['bandwidth'] -= traffic_matrix[k][u][v].bandwidth
+                        graph[str(current)][str(next)][index]['traffic'].append(traffic_matrix[k][u][v])
+                        # 记录链路等级
+                        traffic_matrix[k][u][v].path_level.append(graph[str(current)][str(next)][index]['level'])
+                        path.append(next)
+                        # 若下一跳节点为目的节点，推出循环
+                        if next == v:
                             break
-                        start = end
-                    traffic_matrix[int(s)][int(d)][k].path = path
-                    traffic_matrix[int(s)][int(d)][k].lightpath = lightpath
-                    success_traffic[traffic.security].append(traffic)
-                    logging.info("{} - The whole path is {}.".format(__name__, path))
-                    logging.info("{}".format('-'*100))
-        return blocked_traffic, success_traffic
+                    traffic_matrix[k][u][v].path = path
+        result = Result(graph, traffic_matrix)
+        return result
 
 
 class SecurityAwareServiceMappingAlgorithm(object):
@@ -325,18 +302,49 @@ class SecurityAwareServiceMappingAlgorithm(object):
         nodes = list(map(str, graph.nodes))
         for u in nodes:
             for v in nodes:
+                # 判断节点对(u, v)间是否存在链路
                 if not graph.has_edge(u, v):
                     continue
-                if scheme == 'LBMS':
-                    pass
-                elif scheme == 'LSMS':
-                    edges_with_same_level = {t: graph[u][v][t] for t in graph[u][v] if graph[u][v][t]['level'] == req_security}
-                    if not edges_with_same_level:
-                        continue
+                # 找出等级相同的链路
+                edges_with_same_level = {t: graph[u][v][t]
+                                         for t in graph[u][v]
+                                         if graph[u][v][t]['level'] == req_security}
+                # 若存在等级相同的链路，则选出带宽最大的链路
+                if edges_with_same_level:
                     t = max(edges_with_same_level.keys(), key=lambda x: edges_with_same_level[x]['bandwidth'])
                     edge = edges_with_same_level[t]
+                # 若不存在等级相同的链路，则根据不同方案做出不同操作
                 else:
-                    raise ValueError('Do not understand scheme: {}.'.format(scheme))
+                    if scheme == 'LSMS':
+                        continue
+                    elif scheme == 'LBMS':
+                        # 找出(u, v)间高等级链路
+                        edges_beyond_req_level = {t: graph[u][v][t]
+                                                  for t in graph[u][v]
+                                                  if graph[u][v][t]['level'] < req_security}
+                        if not edges_beyond_req_level:
+                            continue
+                        # 计算链路指标：1、跨级带宽 2、同等级占用带宽比例 3、跨越等级 4、可用带宽
+                        # 初始化指标矩阵大小为 指标数*链路数
+                        metrics = np.zeros(shape=(2, len(edges_beyond_req_level)))
+                        metrics[0] = [edges_beyond_req_level[t]['bandwidth'] / (req_security - edges_beyond_req_level[t]['level']) for t in sorted(edges_beyond_req_level)]
+                        metrics[1] = [np.sum([traffic.bandwidth
+                                              for traffic in edges_beyond_req_level[t]['traffic']
+                                              if traffic.security == edges_beyond_req_level[t]['level']])
+                                      / (self.STANDARD_BANDWIDTH - edges_beyond_req_level[t]['bandwidth'])
+                                      for t in sorted(edges_beyond_req_level)]
+                        metrics[np.isnan(metrics)] = 0
+                        # 归一化
+                        min_ = metrics.min(axis=1).reshape(2, 1)
+                        max_ = metrics.max(axis=1).reshape(2, 1)
+                        metrics = (metrics - min_) / (max_ - min_)
+                        metrics[np.isnan(metrics)] = 0
+                        # 求最大指标对应的链路，默认权重为(0.7, 0.3)
+                        max_metric_index = np.argmax(np.array([0.7, 0.3]).dot(metrics))
+                        t = list(edges_beyond_req_level.keys())[max_metric_index]
+                        edge = edges_beyond_req_level[t]
+                    else:
+                        raise ValueError('Do not understand scheme: {}.'.format(scheme))
                 G.add_edge(
                     u, v,
                     index=t,
@@ -366,6 +374,7 @@ class SecurityAwareServiceMappingAlgorithm(object):
         # 若当前为最后一跳，即路径分段为空集合
         if not path_seg:
             graph[u][v][G[u][v]['index']]['bandwidth'] -= traffic.bandwidth
+            graph[u][v][G[u][v]['index']]['traffic'].append(traffic)
             traffic.path_level.insert(0, G[u][v]['level'])
             return True
         # 若不为最后一跳，则向后递归
@@ -373,6 +382,7 @@ class SecurityAwareServiceMappingAlgorithm(object):
             # 若后继成功预留带宽，则继续向前预留
             if self._reserve_bandwidth(G, graph, path_seg, traffic):
                 graph[u][v][G[u][v]['index']]['bandwidth'] -= traffic.bandwidth
+                graph[u][v][G[u][v]['index']]['traffic'].append(traffic)
                 traffic.path_level.insert(0, G[u][v]['level'])
                 return True
             # 若后继带宽不足，则不会预留带宽

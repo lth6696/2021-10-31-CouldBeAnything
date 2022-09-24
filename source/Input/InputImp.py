@@ -19,7 +19,7 @@ class Traffic(object):
         self.bandwidth = self.DefaultValue
         self.security = self.DefaultValue
         self.blocked = True
-        self.block_reason = '0x00'      # 0x00 - No block; 0x01 - No path; 0x02 - No bandwidth
+        # self.block_reason = '0x00'      # 0x00 - No block; 0x01 - No path; 0x02 - No bandwidth
         self.path = []          # [node1, node2, ...]
         self.path_level = []    # 记录途径路径的安全等级
 
