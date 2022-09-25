@@ -1,9 +1,7 @@
 import matplotlib.pyplot as plt
 from matplotlib import cm
 import networkx as nx
-import numpy as np
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes, mark_inset
-import json
 
 
 def style(width, height, fontsize=8):
@@ -106,54 +104,8 @@ class ResultPresentation(object):
         plt.tight_layout()
         plt.show()
 
-    def plot_line_graph_for_icocn(self,
-                        data,
-                        x: list = None,
-                        xlabel: str = '',
-                        ylabel: str = '',
-                        fsize: tuple = (5.8, 4.4)):
-        marker = ['o', 's', 'X', '^', 'p']
-        line = ['-', '--', ':', '-.']
-        map_vir = cm.get_cmap(name='gist_rainbow')
-        solver = ['FF-SL', 'FF-ML', 'SLF-ML']
-
-        if fsize is not None:
-            style(*fsize)
-
-        # 取出不同方案数据
-        for i, y in enumerate(data):
-            plt.plot(x,
-                     y,                             # set data
-                     marker=marker[i], ms=2,        # set marker
-                     ls=line[int(i%len(line))], lw=0.5,            # set line
-                     color=map_vir((i+1)/len(data)), # others
-                     label=solver[i]
-                     )
-        plt.yticks(rotation='vertical')
-        plt.xlabel(xlabel)
-        plt.ylabel(ylabel)
-        # plt.xticks([i*5 for i in range(3)])
-        plt.yticks([i*4 for i in range(0, 5)])
-        plt.axhline(y=16, xmin=0.045, xmax=0.955, ls='-.', lw=1, color='#8B0000', label='Network Capacity')
-        plt.grid(True, ls=':', lw=0.5, c='#d5d6d8')
-        plt.tight_layout()
-        plt.legend()
-        plt.show()
-
 
 if __name__ == '__main__':
-    # result_json = json.load(open('../results_for_sci.json'))
-    # var = 'network_capacity'
-    # # ResultPresentation().plot_line_graph_for_icocn([[np.sum(row) for row in result_json[solver][var]] for solver in ['FF-SL', 'FF-ML', 'SLF-ML']],
-    # # ResultPresentation().plot_line_graph_for_icocn([[row[2] for row in result_json[solver][var]] for solver in ['FF-SL', 'FF-ML', 'SLF-ML']],
-    # ResultPresentation().plot_line_graph_for_icocn([result_json[solver][var] for solver in ['FF-SL', 'FF-ML', 'SLF-ML']],
-    #                                                x=[i for i in range(1, 41)],
-    #                                                xlabel='Number of Traffic Matrix',
-    #                                                ylabel='Throughput (Tb/s)',
-    #                                                fsize=(8.6, 6.2)
-    #                                                # fsize=(6, 4.5)
-    #                                                )
-
     style(8.6, 6.2)
     marker = ['o', 's', 'X', '^', 'p']
     line = ['-', '--', ':', '-.']
@@ -227,7 +179,13 @@ if __name__ == '__main__':
          [97.08, 95.42, 92.82, 85.33],
          [91.82, 88.07, 81.51, 76.19]]
     # ILP-LSMS =   [93.8, 90.2, 85.8, 80.4]
-    # SASMA-LSMS = [92.2, 90.8, 84.6, 75.2]
+    # SASMA-LSMS = [92.2, 88.7, 84.6, 75.2]
+    # ILP-LBMS =   [97.5, 96.5, 94.3, 91.8]
+    # SASMA-LBMS = [96.9, 95.7, 92.3, 84.7] (0.7, 0.3, 0, 0)
+    # SASMA-LBMS = [98.6, 96.3, 91.6, 83.9] (0, 0, 0.5, 0.5)
+    # SASMA-LBMS = [98.1, 95.2, 92.2, 84.8] (0.3, 0.2, 0.25, 0.25)
+    # SASMA-LBMS = [97.9, 95.5, 92.4, 84.2] (0.6, 0.2, 0, 0.2)
+
     solver = ['ILP-LBMS', 'ILP-LSMS', 'SASMA-ISv1', 'SASMA-ISv2', 'SASMA-LSMS']
     for i, scheme in enumerate(y):
         plt.plot(K, scheme, marker=marker[i], ms=2, ls=line[i%4], lw=0.5, color=map_vir((i+1)/len(y)), label=solver[i])

@@ -3,7 +3,6 @@ import logging
 import logging.config
 
 import numpy as np
-import networkx as nx
 import pandas as pd
 from time import time
 
@@ -18,7 +17,7 @@ BaseLine = 1  # 1 Gb/s
 LightPathBandwidth = 100 * BaseLine  # 100 Gb/s
 
 
-def simulate(nw: int, ntm: int, nl: int, method: str, topo_file: str):
+def simulate(nw: int, ntm: int, nl: int, method: str, topo_file: str, metrics_weight: tuple):
     """
     本方法按顺序执行算法步骤
     :param nw: int, 波长数
@@ -26,6 +25,7 @@ def simulate(nw: int, ntm: int, nl: int, method: str, topo_file: str):
     :param nl: int, 安全等级数
     :param method: str, 求解方法
     :param topo_file: str, 拓扑文件路径
+    :param metrics_weight: tuple, 添加边缘时，多指标权重，权重和为 1
     :return: obj, 仿真结果
     """
     allowed_methods = {'ILP-LBMS', 'ILP-LSMS', 'SASMA-LBMS', 'SASMA-LSMS'}
@@ -46,7 +46,7 @@ def simulate(nw: int, ntm: int, nl: int, method: str, topo_file: str):
         result = IntegerLinearProgram().run(input_.MultiDiG, adj_matrix, level_matrix, bandwidth_matrix, traffic_matrix, scheme)
     else:
         sasma = SecurityAwareServiceMappingAlgorithm()
-        result = sasma.solve(input_.MultiDiG, traffic_matrix, scheme=scheme)
+        result = sasma.solve(input_.MultiDiG, traffic_matrix, scheme=scheme, metrics_weight=metrics_weight)
     end = time()
     logging.info('{} - {} - The solver runs {:.3f} seconds.'.format(__file__, __name__, end-start))
     return result
@@ -60,15 +60,16 @@ if __name__ == '__main__':
     Nlevel = 3          # 安全等级数
     Nmatrix = 40        # 流量矩阵数
     RepeatTimes = 50    # 重复实验次数
-    Method = 'ILP-LSMS'     # 共有四种求解方式 {'ILP-LBMS', 'ILP-LSMS', 'SASMA-LBMS', 'SASMA-LSMS'}
+    Method = 'SASMA-LBMS'     # 共有四种求解方式 {'ILP-LBMS', 'ILP-LSMS', 'SASMA-LBMS', 'SASMA-LSMS'}
+    MetricWeights = (0.6, 0.2, 0, 0.2)    # 指标有四种：1、跨级带宽 2、同等级占用带宽比例 3、跨越等级 4、可用带宽
     TopoFile = "./graphml/hexnet/hexnet.graphml"
     SaveFile = 'result_matrix.npy'
 
     # 仿真
     metrics = {'mapping_rate', 'throughput', 'ave_hops', 'ave_link_utilization', 'ave_level_deviation'}
     result_matrix = np.zeros(shape=(Nmatrix, RepeatTimes, len(metrics)))
-    # for K in range(1, Nmatrix+1):
-    for K in [12, 16]:
+    for K in range(1, Nmatrix+1):
+    # for K in [4, 8, 12, 16]:
         logging.info('{} - {} - Simulation sets {} wavelengths, {}/{} levels and {}/{} matrices.'
                      .format(__file__, __name__,
                              Nwavelength,
@@ -80,7 +81,8 @@ if __name__ == '__main__':
                               ntm=K if 'K' in dir() else Nmatrix,
                               nl=L if 'L' in dir() else Nlevel,
                               method=Method,
-                              topo_file=TopoFile)
+                              topo_file=TopoFile,
+                              metrics_weight=MetricWeights)
             result_matrix[K-1][i] = [result.mapping_rate,
                                      result.throughput,
                                      result.ave_hops,

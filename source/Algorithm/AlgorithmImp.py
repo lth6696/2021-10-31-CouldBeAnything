@@ -1,13 +1,10 @@
 import logging
-import math
+import collections
 
-import networkx
 import numpy as np
-import pandas as pd
 import pulp.pulp
 import networkx as nx
 from pulp import *
-from collections import defaultdict
 
 from source.result.ResultAnalysis import Result
 from source.input.InputImp import Traffic
@@ -173,10 +170,10 @@ class IntegerLinearProgram(object):
                 (int(neighbor), t)
                 for neighbor in graph.neighbors(str(current))    # 遍历邻居节点
                 for t, var in enumerate(variable[current][int(neighbor)])   # 遍历平行边缘
-                if var.value() == 1.0   # 判断边缘是否被采用
+                if round(var.value()) == 1   # 判断边缘是否被采用。因var可能为趋近1的小数（如:1.00001或0.99998），故需取整后判断。
             ]
-            if len(next) == 0 or len(next) > 1:
-                raise ValueError
+            if len(next) != 1:
+                raise Warning
             return next.pop()
 
         (K, row, col) = traffic_matrix.shape
@@ -220,17 +217,21 @@ class SecurityAwareServiceMappingAlgorithm(object):
         self.STANDARD_BANDWIDTH = 100
         self.ROUTED = 1
         self.BLOCKED = -1
+        # 指标包含: 1、跨级带宽 2、同等级占用带宽比例 3、跨越等级 4、可用带宽
+        self.MetricsName = {'CrossLevelBandwidth', 'UsedBandwidth', 'CrossLevel', 'AvailableBandwidth'}
 
     def solve(self,
               graph: nx.MultiDiGraph,
               traffic_matrix: np.matrix,
-              scheme: str
+              scheme: str,
+              metrics_weight: tuple
               ):
         """
         本方法求解
         :param graph: MultiDiGraph, 有向多边图
         :param traffic_matrix: np.matrix, 流量矩阵，目前数据结构为列表，后续更改为矩阵
-        :param str: str, 两种方案，越级和非越级
+        :param scheme: str, 两种方案，越级和非越级
+        :param metrics_weight: tuple, 添加边缘时，多指标权重，权重总和为1
         :return: 仿真结果
         """
         (page, row, col) = traffic_matrix.shape
@@ -244,7 +245,7 @@ class SecurityAwareServiceMappingAlgorithm(object):
                 for v in range(col):
                     if u == v:
                         continue
-                    if self._is_routed(traffic_matrix[k][u][v], graph, scheme):
+                    if self._is_routed(traffic_matrix[k][u][v], graph, scheme, metrics_weight):
                         self.routed_traffic[k][u][v] = self.ROUTED
                         traffic_matrix[k][u][v].blocked = False
                     else:
@@ -260,14 +261,15 @@ class SecurityAwareServiceMappingAlgorithm(object):
     def _is_routed(self,
                    traffic: Traffic,
                    graph: nx.MultiDiGraph,
-                   scheme: str
+                   scheme: str,
+                   metrics_weight: tuple
                    ):
         # 初始化单边有向图
         G = nx.DiGraph()
         G.add_nodes_from(graph.nodes)
 
         # 筛选并添加边缘
-        self._add_edges(G, graph, traffic.security, scheme)
+        self._add_edges(G, graph, traffic.security, scheme, metrics_weight)
 
         try:
             # 最短路径计算
@@ -287,18 +289,23 @@ class SecurityAwareServiceMappingAlgorithm(object):
                    G: nx.DiGraph,
                    graph: nx.MultiDiGraph,
                    req_security: int,
-                   scheme: str
+                   scheme: str,
+                   metrics_weight: tuple
                    ):
         """
         光路添加算法分为多个步骤：
         1 - 变量初始化
         2 - 边路所有边缘
         3 - 添加边缘
-        :param G: nx.DiGraph, 有向图
+        :param G: nx.DiGraph, 单边有向图，算法内用于路径计算的图
+        :param graph: nx.MultiDiGraph, 多边有向图，仿真拓扑图
         :param req_security: int, 请求安全等级
         :param scheme: str, 越级方案
+        :param metrics_weight: tuple, 添加边缘时，多指标权重
         :return: bool, 布尔值
         """
+        if len(metrics_weight) != len(self.MetricsName):
+            raise ValueError('Wrong number of metric weights.')
         nodes = list(map(str, graph.nodes))
         for u in nodes:
             for v in nodes:
@@ -319,28 +326,30 @@ class SecurityAwareServiceMappingAlgorithm(object):
                         continue
                     elif scheme == 'LBMS':
                         # 找出(u, v)间高等级链路
-                        edges_beyond_req_level = {t: graph[u][v][t]
-                                                  for t in graph[u][v]
-                                                  if graph[u][v][t]['level'] < req_security}
+                        edges_beyond_req_level = collections.OrderedDict({t: graph[u][v][t]
+                                                                          for t in graph[u][v]
+                                                                          if graph[u][v][t]['level'] < req_security})
                         if not edges_beyond_req_level:
                             continue
-                        # 计算链路指标：1、跨级带宽 2、同等级占用带宽比例 3、跨越等级 4、可用带宽
                         # 初始化指标矩阵大小为 指标数*链路数
-                        metrics = np.zeros(shape=(2, len(edges_beyond_req_level)))
-                        metrics[0] = [edges_beyond_req_level[t]['bandwidth'] / (req_security - edges_beyond_req_level[t]['level']) for t in sorted(edges_beyond_req_level)]
+                        metrics = np.zeros(shape=(len(self.MetricsName), len(edges_beyond_req_level)))
+                        metrics[0] = [edges_beyond_req_level[t]['bandwidth'] / (req_security - edges_beyond_req_level[t]['level']) for t in edges_beyond_req_level]
                         metrics[1] = [np.sum([traffic.bandwidth
                                               for traffic in edges_beyond_req_level[t]['traffic']
                                               if traffic.security == edges_beyond_req_level[t]['level']])
                                       / (self.STANDARD_BANDWIDTH - edges_beyond_req_level[t]['bandwidth'])
-                                      for t in sorted(edges_beyond_req_level)]
+                                      for t in edges_beyond_req_level]
+                        metrics[2] = [req_security - edges_beyond_req_level[t]['level'] for t in edges_beyond_req_level]
+                        metrics[3] = [edges_beyond_req_level[t]['bandwidth'] for t in edges_beyond_req_level]
                         metrics[np.isnan(metrics)] = 0
                         # 归一化
-                        min_ = metrics.min(axis=1).reshape(2, 1)
-                        max_ = metrics.max(axis=1).reshape(2, 1)
+                        min_ = metrics.min(axis=1).reshape(len(self.MetricsName), 1)
+                        max_ = metrics.max(axis=1).reshape(len(self.MetricsName), 1)
                         metrics = (metrics - min_) / (max_ - min_)
                         metrics[np.isnan(metrics)] = 0
-                        # 求最大指标对应的链路，默认权重为(0.7, 0.3)
-                        max_metric_index = np.argmax(np.array([0.7, 0.3]).dot(metrics))
+                        metrics[2] = 1-metrics[2]
+                        # 求最大指标对应的链路
+                        max_metric_index = np.argmax(np.array(metrics_weight).dot(metrics))
                         t = list(edges_beyond_req_level.keys())[max_metric_index]
                         edge = edges_beyond_req_level[t]
                     else:

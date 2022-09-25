@@ -1,7 +1,5 @@
 import networkx as nx
 import numpy as np
-from collections import defaultdict
-import pandas
 
 
 class Result(object):
@@ -19,6 +17,7 @@ class Result(object):
                  ):
         # 默认值
         self.LightPathBandwidth = 100 # Gb/s
+        self.InitialValue = -1
 
         # 输入
         self.graph = graph
@@ -38,9 +37,9 @@ class Result(object):
 
         # 初始化空矩阵
         routed_traffic_matrix = np.zeros(shape=(page, row, col))
-        ave_hops_matrix = np.ones(shape=(page, row, col)) * -1
+        ave_hops_matrix = np.ones(shape=(page, row, col)) * self.InitialValue
         throughput_matrix = np.zeros(shape=(page, row, col))
-        ave_level_deviation_matrix = np.ones(shape=(page, row, col)) * -1
+        ave_level_deviation_matrix = np.ones(shape=(page, row, col)) * self.InitialValue
 
         for k in range(page):
             for u in range(row):
@@ -54,17 +53,17 @@ class Result(object):
                         throughput_matrix[k][u][v] = traffic.bandwidth
                         ave_level_deviation_matrix[k][u][v] = (np.sum((traffic.security - np.array(traffic.path_level))**2)/len(traffic.path_level))**0.5
 
-        ave_link_utilization_matrix = np.ones(shape=(row, col)) * -1
+        ave_link_utilization_matrix = np.ones(shape=(row, col)) * self.InitialValue
         for (u, v, t) in self.graph.edges:
             link_utilization = (1 - self.graph[u][v][t]['bandwidth'] / self.LightPathBandwidth) * 100
             [u, v] = map(int, [u, v])
-            if ave_link_utilization_matrix[u][v] == -1:
+            if ave_link_utilization_matrix[u][v] == self.InitialValue:
                 ave_link_utilization_matrix[u][v] = link_utilization
             else:
                 ave_link_utilization_matrix[u][v] = np.mean([link_utilization, ave_link_utilization_matrix[u][v]])
 
         self.mapping_rate = np.sum(routed_traffic_matrix) / (page*row*(col-1))
         self.throughput = np.sum(throughput_matrix)  # Gb/s
-        self.ave_hops = np.mean(ave_hops_matrix[ave_hops_matrix != -1])
-        self.ave_link_utilization = np.mean(ave_link_utilization_matrix[ave_link_utilization_matrix != -1])
-        self.ave_level_deviation = np.mean(ave_level_deviation_matrix[ave_level_deviation_matrix != -1])
+        self.ave_hops = np.mean(ave_hops_matrix[ave_hops_matrix != self.InitialValue])
+        self.ave_link_utilization = np.mean(ave_link_utilization_matrix[ave_link_utilization_matrix != self.InitialValue])
+        self.ave_level_deviation = np.mean(ave_level_deviation_matrix[ave_level_deviation_matrix != self.InitialValue])
