@@ -26,6 +26,7 @@ class Result(object):
         # 结果变量
         self.mapping_rate = 0
         self.throughput = 0
+        self.req_bandwidth = 0  # 平均每个节点请求总带宽的大小
         self.ave_hops = 0
         self.ave_link_utilization = 0
         self.ave_level_deviation = 0
@@ -37,8 +38,9 @@ class Result(object):
 
         # 初始化空矩阵
         routed_traffic_matrix = np.zeros(shape=(page, row, col))
-        ave_hops_matrix = np.ones(shape=(page, row, col)) * self.InitialValue
         throughput_matrix = np.zeros(shape=(page, row, col))
+        req_bandwidth_matrix = np.zeros(shape=(row, col))
+        ave_hops_matrix = np.ones(shape=(page, row, col)) * self.InitialValue
         ave_level_deviation_matrix = np.ones(shape=(page, row, col)) * self.InitialValue
 
         for k in range(page):
@@ -47,6 +49,7 @@ class Result(object):
                     traffic = self.traffic_matrix[k][u][v]
                     if traffic is None:
                         continue
+                    req_bandwidth_matrix[u][v] += traffic.bandwidth
                     if traffic.blocked == False:
                         routed_traffic_matrix[k][u][v] = 1
                         ave_hops_matrix[k][u][v] = len(traffic.path)-1
@@ -64,6 +67,7 @@ class Result(object):
 
         self.mapping_rate = np.sum(routed_traffic_matrix) / (page*row*(col-1))
         self.throughput = np.sum(throughput_matrix)  # Gb/s
+        self.req_bandwidth = np.mean(req_bandwidth_matrix)
         self.ave_hops = np.mean(ave_hops_matrix[ave_hops_matrix != self.InitialValue])
         self.ave_link_utilization = np.mean(ave_link_utilization_matrix[ave_link_utilization_matrix != self.InitialValue])
         self.ave_level_deviation = np.mean(ave_level_deviation_matrix[ave_level_deviation_matrix != self.InitialValue])

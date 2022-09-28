@@ -397,3 +397,4 @@ class SecurityAwareServiceMappingAlgorithm(object):
             # 若后继带宽不足，则不会预留带宽
             else:
                 return False
+

@@ -49,31 +49,6 @@ class ResultPresentation(object):
     def __init__(self):
         pass
 
-    def plot_line_graph_with_axin(self, X, y, xlabel):
-        style(8.6, 6.2)
-        marker = ['s', 'D']
-        line_style = ['--', '-.', ':']
-        y_re = [[row[i] for i in range(0, len(row), 2)] for row in y]
-        fig, ax = plt.subplots(1, 1)
-        for i, row in enumerate(y_re):
-            plt.plot(X, row, ls=line_style[i], lw=0.5, marker=marker[i], ms=2)
-        plt.xlabel(xlabel)
-        plt.ylabel('Success Mapping Rate (%)')
-        plt.xticks([X[i] for i in range(0, len(X), 4)])
-        plt.yticks(rotation='vertical')
-        plt.tight_layout()
-        plt.legend(['FF-ML', 'SLF-ML'])
-        plt.grid(True, ls=':', lw=0.5, c='#d5d6d8')
-        axins = inset_axes(ax, width="50%", height="40%", loc='center',
-                           bbox_to_anchor=(0.2, 0, 1, 1),
-                           bbox_transform=ax.transAxes,
-                           axes_kwargs={'xticks': [17, 19, 21, 23, 25]})
-        axins.plot([i for i in range(17, 26, 2)], [y[0][i] for i in range(8, 13, 1)], ls=line_style[0], lw=0.5, marker=marker[0], ms=2)
-        axins.plot([i for i in range(17, 26, 2)], [y[1][i] for i in range(8, 13, 1)], ls=line_style[1], lw=0.5, marker=marker[1], ms=2)
-        axins.grid(True, ls=':', lw=0.5, c='#d5d6d8')
-        mark_inset(ax, axins, loc1=2, loc2=4, fc="none", ec='k', lw=0.5, ls=':')
-        plt.show()
-
     def plot_line_graph(self,
                         data,
                         x: list = None,

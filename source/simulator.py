@@ -58,18 +58,17 @@ if __name__ == '__main__':
     # 初始化参数
     Nwavelength = 4     # 波长数
     Nlevel = 3          # 安全等级数
-    Nmatrix = 40        # 流量矩阵数
+    Nmatrix = 25        # 流量矩阵数
     RepeatTimes = 50    # 重复实验次数
     Method = 'SASMA-LBMS'     # 共有四种求解方式 {'ILP-LBMS', 'ILP-LSMS', 'SASMA-LBMS', 'SASMA-LSMS'}
-    MetricWeights = (0.6, 0.2, 0, 0.2)    # 指标有四种：1、跨级带宽 2、同等级占用带宽比例 3、跨越等级 4、可用带宽
-    TopoFile = "./graphml/hexnet/hexnet.graphml"
+    MetricWeights = (0, 0, 0.5, 0.5)    # 指标有四种：1、跨级带宽 2、同等级占用带宽比例 3、跨越等级 4、可用带宽
+    TopoFile = "./graphml/nsfnet/nsfnet.graphml"
     SaveFile = 'result_matrix.npy'
 
     # 仿真
-    metrics = {'mapping_rate', 'throughput', 'ave_hops', 'ave_link_utilization', 'ave_level_deviation'}
+    metrics = ('mapping_rate', 'throughput', 'req_bandwidth', 'ave_hops', 'ave_link_utilization', 'ave_level_deviation')
     result_matrix = np.zeros(shape=(Nmatrix, RepeatTimes, len(metrics)))
     for K in range(1, Nmatrix+1):
-    # for K in [4, 8, 12, 16]:
         logging.info('{} - {} - Simulation sets {} wavelengths, {}/{} levels and {}/{} matrices.'
                      .format(__file__, __name__,
                              Nwavelength,
@@ -85,10 +84,11 @@ if __name__ == '__main__':
                               metrics_weight=MetricWeights)
             result_matrix[K-1][i] = [result.mapping_rate,
                                      result.throughput,
+                                     result.req_bandwidth,
                                      result.ave_hops,
                                      result.ave_link_utilization,
                                      result.ave_level_deviation]
-        print('----------------{}-------------------'.format(K))
-        print(pd.DataFrame(np.mean(result_matrix[K-1], axis=0)))
+        print('{}K={}{}'.format('-'*40, K, '-'*40))
+        print(pd.DataFrame([metrics, np.mean(result_matrix[K-1], axis=0)]))
     # 保存结果矩阵
     np.save(SaveFile, result_matrix)
