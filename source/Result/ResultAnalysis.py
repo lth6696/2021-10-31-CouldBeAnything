@@ -25,7 +25,8 @@ class Result(object):
 
         # 结果变量
         self.mapping_rate = 0
-        self.throughput = 0
+        self.network_throughput = 0     # 网络吞吐量
+        self.service_throughput = 0
         self.req_bandwidth = 0  # 平均每个节点请求总带宽的大小
         self.ave_hops = 0
         self.ave_link_utilization = 0
@@ -38,7 +39,7 @@ class Result(object):
 
         # 初始化空矩阵
         routed_traffic_matrix = np.zeros(shape=(page, row, col))
-        throughput_matrix = np.zeros(shape=(page, row, col))
+        service_throughput_matrix = np.zeros(shape=(page, row, col))
         req_bandwidth_matrix = np.zeros(shape=(row, col))
         ave_hops_matrix = np.ones(shape=(page, row, col)) * self.InitialValue
         ave_level_deviation_matrix = np.ones(shape=(page, row, col)) * self.InitialValue
@@ -53,20 +54,24 @@ class Result(object):
                     if traffic.blocked == False:
                         routed_traffic_matrix[k][u][v] = 1
                         ave_hops_matrix[k][u][v] = len(traffic.path)-1
-                        throughput_matrix[k][u][v] = traffic.bandwidth
+                        service_throughput_matrix[k][u][v] = traffic.bandwidth
                         ave_level_deviation_matrix[k][u][v] = (np.sum((traffic.security - np.array(traffic.path_level))**2)/len(traffic.path_level))**0.5
 
         ave_link_utilization_matrix = np.ones(shape=(row, col)) * self.InitialValue
+        network_throughput_matrix = np.zeros(shape=(row, col))
         for (u, v, t) in self.graph.edges:
+            # 网络吞吐量
+            network_throughput = self.LightPathBandwidth - self.graph[u][v][t]['bandwidth']
+            # 利用率
             link_utilization = (1 - self.graph[u][v][t]['bandwidth'] / self.LightPathBandwidth) * 100
+
             [u, v] = map(int, [u, v])
-            if ave_link_utilization_matrix[u][v] == self.InitialValue:
-                ave_link_utilization_matrix[u][v] = link_utilization
-            else:
-                ave_link_utilization_matrix[u][v] = np.mean([link_utilization, ave_link_utilization_matrix[u][v]])
+            network_throughput_matrix[u][v] += network_throughput
+            ave_link_utilization_matrix[u][v] = link_utilization if ave_link_utilization_matrix[u][v] == self.InitialValue else np.mean([link_utilization, ave_link_utilization_matrix[u][v]])
 
         self.mapping_rate = np.sum(routed_traffic_matrix) / (page*row*(col-1))
-        self.throughput = np.sum(throughput_matrix)  # Gb/s
+        self.service_throughput = np.sum(service_throughput_matrix)  # Gb/s
+        self.network_throughput = np.sum(network_throughput_matrix)
         self.req_bandwidth = np.mean(req_bandwidth_matrix)
         self.ave_hops = np.mean(ave_hops_matrix[ave_hops_matrix != self.InitialValue])
         self.ave_link_utilization = np.mean(ave_link_utilization_matrix[ave_link_utilization_matrix != self.InitialValue])

@@ -17,7 +17,7 @@ BaseLine = 1  # 1 Gb/s
 LightPathBandwidth = 100 * BaseLine  # 100 Gb/s
 
 
-def simulate(nw: int, ntm: int, nl: int, method: str, topo_file: str, metrics_weight: tuple):
+def simulate(nw: int, ntm: int, nl: int, method: str, topo_file: str, weights: tuple):
     """
     本方法按顺序执行算法步骤
     :param nw: int, 波长数
@@ -25,10 +25,10 @@ def simulate(nw: int, ntm: int, nl: int, method: str, topo_file: str, metrics_we
     :param nl: int, 安全等级数
     :param method: str, 求解方法
     :param topo_file: str, 拓扑文件路径
-    :param metrics_weight: tuple, 添加边缘时，多指标权重，权重和为 1
+    :param weights: tuple, 添加边缘时，多指标权重，权重和为 1
     :return: obj, 仿真结果
     """
-    allowed_methods = {'ILP-LBMS', 'ILP-LSMS', 'SASMA-LBMS', 'SASMA-LSMS'}
+    allowed_methods = {'ILP-LBMS', 'ILP-LSMS', 'SASMA-LFEL', 'SASMA-EO', 'SASMA-LSMS'}
     if method not in allowed_methods:
         raise ValueError('Invalid solver \'{}\''.format(method))
     solver, scheme = method.split('-')
@@ -45,8 +45,15 @@ def simulate(nw: int, ntm: int, nl: int, method: str, topo_file: str, metrics_we
         bandwidth_matrix = input_.get_bandwidth_matrix()
         result = IntegerLinearProgram().run(input_.MultiDiG, adj_matrix, level_matrix, bandwidth_matrix, traffic_matrix, scheme)
     else:
-        sasma = SecurityAwareServiceMappingAlgorithm()
-        result = sasma.solve(input_.MultiDiG, traffic_matrix, scheme=scheme, metrics_weight=metrics_weight)
+        if scheme == 'LFEL':
+            result = LayerFirstEdgeLast().solve(input_.MultiDiG, traffic_matrix, weights)
+        elif scheme == 'EO':
+            result = EdgeOnly().solve(input_.MultiDiG, traffic_matrix, weights)
+        elif scheme == 'LSMS':
+            result = LevelStayMappingScheme().solve(input_.MultiDiG, traffic_matrix, weights)
+        else:
+            result = None
+            logging.error('{} - {} - Inputting wrong scheme {}.'.format(__file__, __name__, scheme))
     end = time()
     logging.info('{} - {} - The solver runs {:.3f} seconds.'.format(__file__, __name__, end-start))
     return result
@@ -59,14 +66,14 @@ if __name__ == '__main__':
     Nwavelength = 4     # 波长数
     Nlevel = 3          # 安全等级数
     Nmatrix = 25        # 流量矩阵数
-    RepeatTimes = 50    # 重复实验次数
-    Method = 'SASMA-LBMS'     # 共有四种求解方式 {'ILP-LBMS', 'ILP-LSMS', 'SASMA-LBMS', 'SASMA-LSMS'}
-    MetricWeights = (0, 0, 0.5, 0.5)    # 指标有四种：1、跨级带宽 2、同等级占用带宽比例 3、跨越等级 4、可用带宽
+    RepeatTimes = 20    # 重复实验次数
+    Method = 'SASMA-EO'     # 共有四种求解方式 {'ILP-LBMS', 'ILP-LSMS', 'SASMA-LFEL', 'SASMA-EO', 'SASMA-LSMS'}
+    MetricWeights = (0, 1, 0)    # 指标有四种：1、跨越等级 2、占用带宽 3、抢占带宽比例
     TopoFile = "./graphml/nsfnet/nsfnet.graphml"
     SaveFile = 'result_matrix.npy'
 
     # 仿真
-    metrics = ('mapping_rate', 'throughput', 'req_bandwidth', 'ave_hops', 'ave_link_utilization', 'ave_level_deviation')
+    metrics = ('mapping_rate', 'service_throughput', 'network_throughput', 'req_bandwidth', 'ave_hops', 'ave_link_utilization', 'ave_level_deviation')
     result_matrix = np.zeros(shape=(Nmatrix, RepeatTimes, len(metrics)))
     for K in range(1, Nmatrix+1):
         logging.info('{} - {} - Simulation sets {} wavelengths, {}/{} levels and {}/{} matrices.'
@@ -81,14 +88,15 @@ if __name__ == '__main__':
                               nl=L if 'L' in dir() else Nlevel,
                               method=Method,
                               topo_file=TopoFile,
-                              metrics_weight=MetricWeights)
+                              weights=MetricWeights)
             result_matrix[K-1][i] = [result.mapping_rate,
-                                     result.throughput,
+                                     result.service_throughput,
+                                     result.network_throughput,
                                      result.req_bandwidth,
                                      result.ave_hops,
                                      result.ave_link_utilization,
                                      result.ave_level_deviation]
-        print('{}K={}{}'.format('-'*40, K, '-'*40))
+        print('{}K={}{}'.format('-'*60, K, '-'*60))
         print(pd.DataFrame([metrics, np.mean(result_matrix[K-1], axis=0)]))
     # 保存结果矩阵
     np.save(SaveFile, result_matrix)

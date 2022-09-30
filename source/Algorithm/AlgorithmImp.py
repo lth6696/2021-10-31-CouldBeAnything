@@ -209,7 +209,7 @@ class IntegerLinearProgram(object):
         return result
 
 
-class SecurityAwareServiceMappingAlgorithm(object):
+class HeuristicAlgorithm(object):
     def __init__(self):
         self.routed_traffic = None
 
@@ -217,21 +217,19 @@ class SecurityAwareServiceMappingAlgorithm(object):
         self.STANDARD_BANDWIDTH = 100
         self.ROUTED = 1
         self.BLOCKED = -1
-        # 指标包含: 1、跨级带宽 2、同等级占用带宽比例 3、跨越等级 4、可用带宽
-        self.MetricsName = {'CrossLevelBandwidth', 'UsedBandwidth', 'CrossLevel', 'AvailableBandwidth'}
+        # 指标包含: 1、跨越等级 2、占用带宽 3、抢占带宽比例
+        self.MetricsName = {'CrossLevel', 'UsedBandwidth', 'OccupiedBandwidthRate'}
 
     def solve(self,
               graph: nx.MultiDiGraph,
               traffic_matrix: np.matrix,
-              scheme: str,
-              metrics_weight: tuple
+              weights: tuple
               ):
         """
-        本方法求解
+        启发式算法求解器。
         :param graph: MultiDiGraph, 有向多边图
         :param traffic_matrix: np.matrix, 流量矩阵，目前数据结构为列表，后续更改为矩阵
-        :param scheme: str, 两种方案，越级和非越级
-        :param metrics_weight: tuple, 添加边缘时，多指标权重，权重总和为1
+        :param weights: tuple, 添加边缘时，多指标权重，权重总和为1
         :return: 仿真结果
         """
         (page, row, col) = traffic_matrix.shape
@@ -245,7 +243,7 @@ class SecurityAwareServiceMappingAlgorithm(object):
                 for v in range(col):
                     if u == v:
                         continue
-                    if self._is_routed(traffic_matrix[k][u][v], graph, scheme, metrics_weight):
+                    if self._is_routed(traffic_matrix[k][u][v], graph, weights):
                         self.routed_traffic[k][u][v] = self.ROUTED
                         traffic_matrix[k][u][v].blocked = False
                     else:
@@ -261,15 +259,14 @@ class SecurityAwareServiceMappingAlgorithm(object):
     def _is_routed(self,
                    traffic: Traffic,
                    graph: nx.MultiDiGraph,
-                   scheme: str,
-                   metrics_weight: tuple
+                   weights: tuple
                    ):
         # 初始化单边有向图
         G = nx.DiGraph()
         G.add_nodes_from(graph.nodes)
 
         # 筛选并添加边缘
-        self._add_edges(G, graph, traffic.security, scheme, metrics_weight)
+        self._add_edges(G, graph, traffic.security, weights)
 
         try:
             # 最短路径计算
@@ -285,83 +282,21 @@ class SecurityAwareServiceMappingAlgorithm(object):
         else:
             return True
 
-    def _add_edges(self,
-                   G: nx.DiGraph,
-                   graph: nx.MultiDiGraph,
-                   req_security: int,
-                   scheme: str,
-                   metrics_weight: tuple
-                   ):
+    def _add_edges(
+            self,
+            G: nx.DiGraph,
+            graph: nx.MultiDiGraph,
+            req_security: int,
+            weights: tuple
+    ):
         """
-        光路添加算法分为多个步骤：
-        1 - 变量初始化
-        2 - 边路所有边缘
-        3 - 添加边缘
+        本方法需要集成类覆写。
         :param G: nx.DiGraph, 单边有向图，算法内用于路径计算的图
         :param graph: nx.MultiDiGraph, 多边有向图，仿真拓扑图
         :param req_security: int, 请求安全等级
-        :param scheme: str, 越级方案
-        :param metrics_weight: tuple, 添加边缘时，多指标权重
         :return: bool, 布尔值
         """
-        if len(metrics_weight) != len(self.MetricsName):
-            raise ValueError('Wrong number of metric weights.')
-        nodes = list(map(str, graph.nodes))
-        for u in nodes:
-            for v in nodes:
-                # 判断节点对(u, v)间是否存在链路
-                if not graph.has_edge(u, v):
-                    continue
-                # 找出等级相同的链路
-                edges_with_same_level = {t: graph[u][v][t]
-                                         for t in graph[u][v]
-                                         if graph[u][v][t]['level'] == req_security}
-                # 若存在等级相同的链路，则选出带宽最大的链路
-                if edges_with_same_level:
-                    t = max(edges_with_same_level.keys(), key=lambda x: edges_with_same_level[x]['bandwidth'])
-                    edge = edges_with_same_level[t]
-                # 若不存在等级相同的链路，则根据不同方案做出不同操作
-                else:
-                    if scheme == 'LSMS':
-                        continue
-                    elif scheme == 'LBMS':
-                        # 找出(u, v)间高等级链路
-                        edges_beyond_req_level = collections.OrderedDict({t: graph[u][v][t]
-                                                                          for t in graph[u][v]
-                                                                          if graph[u][v][t]['level'] < req_security})
-                        if not edges_beyond_req_level:
-                            continue
-                        # 初始化指标矩阵大小为 指标数*链路数
-                        metrics = np.zeros(shape=(len(self.MetricsName), len(edges_beyond_req_level)))
-                        metrics[0] = [edges_beyond_req_level[t]['bandwidth'] / (req_security - edges_beyond_req_level[t]['level']) for t in edges_beyond_req_level]
-                        metrics[1] = [np.sum([traffic.bandwidth
-                                              for traffic in edges_beyond_req_level[t]['traffic']
-                                              if traffic.security == edges_beyond_req_level[t]['level']])
-                                      / (self.STANDARD_BANDWIDTH - edges_beyond_req_level[t]['bandwidth'])
-                                      for t in edges_beyond_req_level]
-                        metrics[2] = [req_security - edges_beyond_req_level[t]['level'] for t in edges_beyond_req_level]
-                        metrics[3] = [edges_beyond_req_level[t]['bandwidth'] for t in edges_beyond_req_level]
-                        metrics[np.isnan(metrics)] = 0
-                        # 归一化
-                        min_ = metrics.min(axis=1).reshape(len(self.MetricsName), 1)
-                        max_ = metrics.max(axis=1).reshape(len(self.MetricsName), 1)
-                        metrics = (metrics - min_) / (max_ - min_)
-                        metrics[np.isnan(metrics)] = 0
-                        metrics[2] = 1-metrics[2]
-                        # 求最大指标对应的链路
-                        max_metric_index = np.argmax(np.array(metrics_weight).dot(metrics))
-                        t = list(edges_beyond_req_level.keys())[max_metric_index]
-                        edge = edges_beyond_req_level[t]
-                    else:
-                        raise ValueError('Do not understand scheme: {}.'.format(scheme))
-                G.add_edge(
-                    u, v,
-                    index=t,
-                    level=edge['level'],
-                    bandwidth=edge['bandwidth'],
-                    cost=1-edge['bandwidth']/self.STANDARD_BANDWIDTH
-                )
-                # print(G[u][v]['cost'])
+        pass
 
     def _reserve_bandwidth(self,
                            G: nx.DiGraph,
@@ -398,3 +333,129 @@ class SecurityAwareServiceMappingAlgorithm(object):
             else:
                 return False
 
+
+class LayerFirstEdgeLast(HeuristicAlgorithm):
+    def _add_edges(
+            self,
+            G: nx.DiGraph,
+            graph: nx.MultiDiGraph,
+            req_security: int,
+            weights: tuple
+    ):
+        nodes = list(map(str, graph.nodes))
+        for u in nodes:
+            for v in nodes:
+                # 判断节点对(u, v)间是否存在链路
+                if not graph.has_edge(u, v):
+                    continue
+                lowest_level_edges = {}     # 存储等级最低的链路
+                lowest_level = 0            # 记录最低等级
+                for t in graph[u][v]:
+                    edge = graph[u][v][t]
+                    # 若链路等级不满足需求或链路没有带宽，则跳过
+                    if edge['level'] > req_security or edge['bandwidth'] == 0:
+                        continue
+                    # 找出等级最低的链路
+                    if edge['level'] > lowest_level:
+                        lowest_level = edge['level']
+                        lowest_level_edges = {}
+                        lowest_level_edges[t] = edge
+                    elif edge['level'] == lowest_level:
+                        lowest_level_edges[t] = edge
+                    else:
+                        continue
+                if not lowest_level_edges:
+                    continue
+                # 找出可用带宽最高的链路
+                selected_edge = max(lowest_level_edges, key=lambda x: lowest_level_edges[x]['bandwidth'])
+                G.add_edge(
+                    u, v,
+                    index=selected_edge,
+                    level=lowest_level_edges[selected_edge]['level'],
+                    bandwidth=lowest_level_edges[selected_edge]['bandwidth'],
+                    cost=1 - lowest_level_edges[selected_edge]['bandwidth'] / self.STANDARD_BANDWIDTH
+                )
+
+
+class EdgeOnly(HeuristicAlgorithm):
+    def _add_edges(
+            self,
+            G: nx.DiGraph,
+            graph: nx.MultiDiGraph,
+            req_security: int,
+            weights: tuple
+    ):
+        if len(weights) != len(self.MetricsName):
+            raise ValueError('Wrong number of metric weights.')
+        nodes = list(map(str, graph.nodes))
+        for u in nodes:
+            for v in nodes:
+                # 判断节点对(u, v)间是否存在链路
+                if not graph.has_edge(u, v):
+                    continue
+                # 找出(u, v)间所有链路
+                edges = collections.OrderedDict({t: graph[u][v][t]
+                                                 for t in graph[u][v]
+                                                 if graph[u][v][t]['level'] <= req_security})
+                if not edges:
+                    continue
+                # 初始化指标矩阵大小为 指标数*链路数
+                metrics = np.zeros(shape=(len(self.MetricsName), len(edges)))
+                metrics[0] = [req_security - edges[t]['level'] for t in edges]
+                metrics[1] = [self.STANDARD_BANDWIDTH - edges[t]['bandwidth'] for t in edges]
+                metrics[2] = [np.sum([traffic.bandwidth
+                                      for traffic in edges[t]['traffic']
+                                      if traffic.security == edges[t]['level']])
+                              / (self.STANDARD_BANDWIDTH - edges[t]['bandwidth'])
+                              for t in edges]
+                metrics[np.isnan(metrics)] = 0
+                # 归一化
+                min_ = metrics.min(axis=1).reshape(len(self.MetricsName), 1)
+                max_ = metrics.max(axis=1).reshape(len(self.MetricsName), 1)
+                metrics = (metrics - min_) / (max_ - min_)
+                metrics[np.isnan(metrics)] = 0
+                # 求最大指标对应的链路
+                min_metric_index = np.argmin(np.array(weights).dot(metrics))
+                t = list(edges.keys())[min_metric_index]
+                G.add_edge(
+                    u, v,
+                    index=t,
+                    level=edges[t]['level'],
+                    bandwidth=edges[t]['bandwidth'],
+                    cost=1-edges[t]['bandwidth']/self.STANDARD_BANDWIDTH
+                )
+                # print(G[u][v]['cost'])
+
+
+class LevelStayMappingScheme(HeuristicAlgorithm):
+    def _add_edges(
+            self,
+            G: nx.DiGraph,
+            graph: nx.MultiDiGraph,
+            req_security: int,
+            weights: tuple
+    ):
+        nodes = list(map(str, graph.nodes))
+        for u in nodes:
+            for v in nodes:
+                # 判断节点对(u, v)间是否存在链路
+                if not graph.has_edge(u, v):
+                    continue
+                # 找出等级相同的链路
+                edges_with_same_level = {t: graph[u][v][t]
+                                         for t in graph[u][v]
+                                         if graph[u][v][t]['level'] == req_security}
+                # 若存在等级相同的链路，则选出带宽最大的链路
+                if edges_with_same_level:
+                    t = max(edges_with_same_level.keys(), key=lambda x: edges_with_same_level[x]['bandwidth'])
+                    edge = edges_with_same_level[t]
+                # 若不存在等级相同的链路，则跳过
+                else:
+                    continue
+                G.add_edge(
+                    u, v,
+                    index=t,
+                    level=edge['level'],
+                    bandwidth=edge['bandwidth'],
+                    cost=1 - edge['bandwidth'] / self.STANDARD_BANDWIDTH
+                )
