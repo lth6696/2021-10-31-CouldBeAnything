@@ -76,3 +76,4 @@ class Result(object):
         self.ave_hops = np.mean(ave_hops_matrix[ave_hops_matrix != self.InitialValue])
         self.ave_link_utilization = np.mean(ave_link_utilization_matrix[ave_link_utilization_matrix != self.InitialValue])
         self.ave_level_deviation = np.mean(ave_level_deviation_matrix[ave_level_deviation_matrix != self.InitialValue])
+

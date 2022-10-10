@@ -405,7 +405,7 @@ class EdgeOnly(HeuristicAlgorithm):
                 metrics[1] = [self.STANDARD_BANDWIDTH - edges[t]['bandwidth'] for t in edges]
                 metrics[2] = [np.sum([traffic.bandwidth
                                       for traffic in edges[t]['traffic']
-                                      if traffic.security == edges[t]['level']])
+                                      if traffic.security != edges[t]['level']])
                               / (self.STANDARD_BANDWIDTH - edges[t]['bandwidth'])
                               for t in edges]
                 metrics[np.isnan(metrics)] = 0

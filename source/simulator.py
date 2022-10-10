@@ -66,9 +66,9 @@ if __name__ == '__main__':
     Nwavelength = 4     # 波长数
     Nlevel = 3          # 安全等级数
     Nmatrix = 25        # 流量矩阵数
-    RepeatTimes = 20    # 重复实验次数
+    RepeatTimes = 30    # 重复实验次数
     Method = 'SASMA-EO'     # 共有四种求解方式 {'ILP-LBMS', 'ILP-LSMS', 'SASMA-LFEL', 'SASMA-EO', 'SASMA-LSMS'}
-    MetricWeights = (0, 1, 0)    # 指标有四种：1、跨越等级 2、占用带宽 3、抢占带宽比例
+    MetricWeights = (0.3, 0.3, 0.3)    # 指标有四种：1、跨越等级 2、占用带宽 3、抢占带宽比例
     TopoFile = "./graphml/nsfnet/nsfnet.graphml"
     SaveFile = 'result_matrix.npy'
 
@@ -76,6 +76,7 @@ if __name__ == '__main__':
     metrics = ('mapping_rate', 'service_throughput', 'network_throughput', 'req_bandwidth', 'ave_hops', 'ave_link_utilization', 'ave_level_deviation')
     result_matrix = np.zeros(shape=(Nmatrix, RepeatTimes, len(metrics)))
     for K in range(1, Nmatrix+1):
+    # for K in [16]:
         logging.info('{} - {} - Simulation sets {} wavelengths, {}/{} levels and {}/{} matrices.'
                      .format(__file__, __name__,
                              Nwavelength,
