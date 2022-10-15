@@ -1,0 +1,243 @@
+<?xml version='1.0' encoding='utf-8'?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">
+
+<key id="d0" for="node" attr.name="type" attr.type="string"/>
+<key id="d1" for="node" attr.name="compute" attr.type="int"/>
+<key id="d2" for="node" attr.name="storage" attr.type="int"/>
+<key id="d3" for="node" attr.name="cost_compute" attr.type="float"/>
+<key id="d4" for="node" attr.name="cost_storage" attr.type="float"/>
+
+<key id="d5" for="edge" attr.name="bandwidth" attr.type="int"/>
+
+<graph edgedefault="directed">
+
+<node id="0">
+  <data key="d0">router</data>
+  <data key="d1">0</data>
+  <data key="d2">0</data>
+  <data key="d3">0</data>
+  <data key="d4">0</data>
+</node>
+<node id="1">
+  <data key="d0">router</data>
+  <data key="d1">0</data>
+  <data key="d2">0</data>
+  <data key="d3">0</data>
+  <data key="d4">0</data>
+</node>
+<node id="2">
+  <data key="d0">router</data>
+  <data key="d1">0</data>
+  <data key="d2">0</data>
+  <data key="d3">0</data>
+  <data key="d4">0</data>
+</node>
+
+<node id="3">
+  <data key="d0">router</data>
+  <data key="d1">0</data>
+  <data key="d2">0</data>
+  <data key="d3">0</data>
+  <data key="d4">0</data>
+</node>
+<node id="4">
+  <data key="d0">router</data>
+  <data key="d1">0</data>
+  <data key="d2">0</data>
+  <data key="d3">0</data>
+  <data key="d4">0</data>
+</node>
+<node id="5">
+  <data key="d0">router</data>
+  <data key="d1">0</data>
+  <data key="d2">0</data>
+  <data key="d3">0</data>
+  <data key="d4">0</data>
+</node>
+<node id="6">
+  <data key="d0">datacenter</data>
+  <data key="d1">6400</data>
+  <data key="d2">20000</data>
+  <data key="d3">0.1</data>
+  <data key="d4">0.1</data>
+</node>
+<node id="7">
+  <data key="d0">datacenter</data>
+  <data key="d1">200</data>
+  <data key="d2">4000</data>
+  <data key="d3">0.6</data>
+  <data key="d4">0.6</data>
+</node>
+<node id="8">
+  <data key="d0">datacenter</data>
+  <data key="d1">200</data>
+  <data key="d2">2000</data>
+  <data key="d3">0.6</data>
+  <data key="d4">0.8</data>
+</node>
+<node id="9">
+  <data key="d0">edge</data>
+  <data key="d1">0</data>
+  <data key="d2">0</data>
+  <data key="d3">0</data>
+  <data key="d4">0</data>
+</node>
+<node id="10">
+  <data key="d0">edge</data>
+  <data key="d1">0</data>
+  <data key="d2">0</data>
+  <data key="d3">0</data>
+  <data key="d4">0</data>
+</node>
+<node id="11">
+  <data key="d0">edge</data>
+  <data key="d1">0</data>
+  <data key="d2">0</data>
+  <data key="d3">0</data>
+  <data key="d4">0</data>
+</node>
+<node id="12">
+  <data key="d0">edge</data>
+  <data key="d1">0</data>
+  <data key="d2">0</data>
+  <data key="d3">0</data>
+  <data key="d4">0</data>
+</node>
+<node id="13">
+  <data key="d0">edge</data>
+  <data key="d1">0</data>
+  <data key="d2">0</data>
+  <data key="d3">0</data>
+  <data key="d4">0</data>
+</node>
+<node id="14">
+  <data key="d0">edge</data>
+  <data key="d1">0</data>
+  <data key="d2">0</data>
+  <data key="d3">0</data>
+  <data key="d4">0</data>
+</node>
+<node id="15">
+  <data key="d0">client</data>
+  <data key="d1">0</data>
+  <data key="d2">0</data>
+  <data key="d3">0</data>
+  <data key="d4">0</data>
+</node>
+<node id="16">
+  <data key="d0">client</data>
+  <data key="d1">0</data>
+  <data key="d2">0</data>
+  <data key="d3">0</data>
+  <data key="d4">0</data>
+</node>
+<node id="17">
+  <data key="d0">client</data>
+  <data key="d1">0</data>
+  <data key="d2">0</data>
+  <data key="d3">0</data>
+  <data key="d4">0</data>
+</node>
+<node id="18">
+  <data key="d0">client</data>
+  <data key="d1">0</data>
+  <data key="d2">0</data>
+  <data key="d3">0</data>
+  <data key="d4">0</data>
+</node>
+<node id="19">
+  <data key="d0">client</data>
+  <data key="d1">0</data>
+  <data key="d2">0</data>
+  <data key="d3">0</data>
+  <data key="d4">0</data>
+</node>
+<node id="20">
+  <data key="d0">client</data>
+  <data key="d1">0</data>
+  <data key="d2">0</data>
+  <data key="d3">0</data>
+  <data key="d4">0</data>
+</node>
+<node id="21">
+  <data key="d0">client</data>
+  <data key="d1">0</data>
+  <data key="d2">0</data>
+  <data key="d3">0</data>
+  <data key="d4">0</data>
+</node>
+<node id="22">
+  <data key="d0">client</data>
+  <data key="d1">0</data>
+  <data key="d2">0</data>
+  <data key="d3">0</data>
+  <data key="d4">0</data>
+</node>
+<node id="23">
+  <data key="d0">client</data>
+  <data key="d1">0</data>
+  <data key="d2">0</data>
+  <data key="d3">0</data>
+  <data key="d4">0</data>
+</node>
+<node id="24">
+  <data key="d0">client</data>
+  <data key="d1">0</data>
+  <data key="d2">0</data>
+  <data key="d3">0</data>
+  <data key="d4">0</data>
+</node>
+
+<edge source="0" target="1" id="00-01"/>
+<edge source="0" target="3" id="00-03"/>
+<edge source="0" target="6" id="00-06"/>
+<edge source="1" target="0" id="01-00"/>
+<edge source="1" target="2" id="01-02"/>
+<edge source="1" target="3" id="01-03"/>
+<edge source="1" target="4" id="01-04"/>
+<edge source="2" target="1" id="02-01"/>
+<edge source="2" target="3" id="02-03"/>
+<edge source="2" target="5" id="02-05"/>
+<edge source="3" target="0" id="03-00"/>
+<edge source="3" target="1" id="03-01"/>
+<edge source="3" target="2" id="03-02"/>
+<edge source="4" target="1" id="04-01"/>
+<edge source="4" target="7" id="04-07"/>
+<edge source="4" target="9" id="04-09"/>
+<edge source="4" target="10" id="04-10"/>
+<edge source="4" target="11" id="04-11"/>
+<edge source="5" target="2" id="05-02"/>
+<edge source="5" target="8" id="05-08"/>
+<edge source="5" target="12" id="05-12"/>
+<edge source="5" target="13" id="05-13"/>
+<edge source="5" target="14" id="05-14"/>
+<edge source="6" target="0" id="06-00"/>
+<edge source="7" target="4" id="07-04"/>
+<edge source="8" target="5" id="08-05"/>
+<edge source="9" target="4" id="09-04"/>
+<edge source="9" target="15" id="09-15"/>
+<edge source="10" target="4" id="10-04"/>
+<edge source="10" target="16" id="10-16"/>
+<edge source="10" target="17" id="10-17"/>
+<edge source="11" target="4" id="11-04"/>
+<edge source="11" target="18" id="11-18"/>
+<edge source="11" target="19" id="11-19"/>
+<edge source="12" target="5" id="12-05"/>
+<edge source="12" target="20" id="12-20"/>
+<edge source="13" target="5" id="13-05"/>
+<edge source="13" target="21" id="13-21"/>
+<edge source="13" target="22" id="13-22"/>
+<edge source="14" target="5" id="14-05"/>
+<edge source="14" target="23" id="14-23"/>
+<edge source="14" target="24" id="14-24"/>
+<edge source="15" target="9" id="15-09"/>
+<edge source="16" target="10" id="16-10"/>
+<edge source="17" target="10" id="17-10"/>
+<edge source="18" target="11" id="18-11"/>
+<edge source="19" target="11" id="19-11"/>
+<edge source="20" target="12" id="20-12"/>
+<edge source="21" target="13" id="21-13"/>
+<edge source="22" target="13" id="22-13"/>
+<edge source="23" target="14" id="23-14"/>
+<edge source="24" target="14" id="24-14"/>
+</graph></graphml>

@@ -2,24 +2,28 @@ import logging.config
 
 import pandas as pd
 
-import result.analysis
 from input import network, traffic
 from solver import problem_defination
 from result import output
-from result import analysis
 
 import geatpy as ea
 import numpy as np
 
 import warnings
+from configparser import ConfigParser
 warnings.filterwarnings("ignore")
 
 
 if __name__ == '__main__':
     logging.config.fileConfig('logconfig.ini')
+    simulation_config_file = "simulation_setting.ini"
+    cfg = ConfigParser()
+    cfg.read(simulation_config_file)
+    section = 'simulation'
+
     # 初始化网络拓扑
-    repeat_times = 10
-    ips_per_gigabyte = 1000
+    repeat_times = int(cfg[section]['repeat_times'])
+    ips_per_gigabyte = int(cfg[section]['ips_per_gigabyte'])
     topology_obj = network.Topology()
     graph = topology_obj.generate_topology()
     neighbors = topology_obj.get_neighbors(graph)
@@ -92,12 +96,3 @@ if __name__ == '__main__':
         print("{}K = {}{}".format('-'*50, K, '-'*50))
         print(pd.DataFrame(np.reshape(data[-1][1], newshape=(1, 13)), columns=data[0]))
     np.save('result.npy', data)
-
-# """
-# Fig.1
-# latency, hop, distance
-# Fig.2
-# service, suc_rate, throughput, com_utl, sto_utl, bandwidth_utl
-# Fig.3
-# cost, ave_compute_req, ave_storage_req, ave_bandwidth_req
-# """
