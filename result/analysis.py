@@ -85,7 +85,7 @@ if __name__ == '__main__':
     print(pd.DataFrame(data, columns=titles))
     rf = ResultFigure()
     rf.plot_line(
-        data[:, 4],
+        data[:, 9],
         [i+1 for i in range(data.shape[0])],
         xlabel='Number of traffic matrices',
         ylabel='Latency (s)',
