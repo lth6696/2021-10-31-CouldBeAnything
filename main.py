@@ -2,28 +2,23 @@ import logging.config
 
 import pandas as pd
 
+import result.analysis
+import result.output as op
 from input import network, traffic
 from solver import problem_defination
-from result import output
 
 import geatpy as ea
 import numpy as np
 
 import warnings
-from configparser import ConfigParser
 warnings.filterwarnings("ignore")
 
 
 if __name__ == '__main__':
     logging.config.fileConfig('logconfig.ini')
-    simulation_config_file = "simulation_setting.ini"
-    cfg = ConfigParser()
-    cfg.read(simulation_config_file)
-    section = 'simulation'
-
     # 初始化网络拓扑
-    repeat_times = int(cfg[section]['repeat_times'])
-    ips_per_gigabyte = int(cfg[section]['ips_per_gigabyte'])
+    repeat_times = 10
+    ips_per_gigabyte = 1000
     topology_obj = network.Topology()
     graph = topology_obj.generate_topology()
     neighbors = topology_obj.get_neighbors(graph)
@@ -76,7 +71,7 @@ if __name__ == '__main__':
             [BestIndi, population] = algorithm.run()
 
             # 保存结果
-            res = output.Result(graph, BestIndi.ObjV, BestIndi.Chroms, BestIndi.Phen)
+            res = op.Result(graph, BestIndi.ObjV, BestIndi.Chroms, BestIndi.Phen)
             best_ObjV = res.get_best_ObjV()
             res.reserve_bandwdith(problem)
             result_matrix[0][i] = best_ObjV[0]                  # latency(us)
