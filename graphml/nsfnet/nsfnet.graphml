@@ -1,0 +1,149 @@
+<?xml version='1.0' encoding='utf-8'?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">
+
+<key id="d0" for="node" attr.name="positionX" attr.type="int"/>
+<key id="d1" for="node" attr.name="positionY" attr.type="int"/>
+
+<key id="d2" for="edge" attr.name="weight" attr.type="int"/>
+<key id="d3" for="edge" attr.name="index" attr.type="int"/>
+
+<graph edgedefault="undirected">
+
+<node id="0">
+  <data key="d0">282</data>
+  <data key="d1">170</data>
+</node>
+<node id="1">
+  <data key="d0">379</data>
+  <data key="d1">72</data>
+</node>
+<node id="2">
+  <data key="d0">386</data>
+  <data key="d1">254</data>
+</node>
+<node id="3">
+  <data key="d0">475</data>
+  <data key="d1">150</data>
+</node>
+<node id="4">
+  <data key="d0">603</data>
+  <data key="d1">195</data>
+</node>
+<node id="5">
+  <data key="d0">547</data>
+  <data key="d1">346</data>
+</node>
+<node id="6">
+  <data key="d0">700</data>
+  <data key="d1">158</data>
+</node>
+<node id="7">
+  <data key="d0">805</data>
+  <data key="d1">125</data>
+</node>
+<node id="8">
+  <data key="d0">801</data>
+  <data key="d1">20</data>
+</node>
+<node id="9">
+  <data key="d0">1028</data>
+  <data key="d1">49</data>
+</node>
+<node id="10">
+  <data key="d0">891</data>
+  <data key="d1">114</data>
+</node>
+<node id="11">
+  <data key="d0">916</data>
+  <data key="d1">-34</data>
+</node>
+<node id="12">
+  <data key="d0">1004</data>
+  <data key="d1">265</data>
+</node>
+<node id="13">
+  <data key="d0">879</data>
+  <data key="d1">397</data>
+</node>
+
+<edge source="1" target="0" id="010000">
+  <data key="d2">1</data>
+  <data key="d3">0</data>
+</edge>
+<edge source="2" target="0" id="020000">
+  <data key="d2">1</data>
+  <data key="d3">0</data>
+</edge>
+<edge source="2" target="1" id="020100">
+  <data key="d2">1</data>
+  <data key="d3">0</data>
+</edge>
+<edge source="3" target="0" id="030000">
+  <data key="d2">1</data>
+  <data key="d3">0</data>
+</edge>
+<edge source="4" target="3" id="040300">
+  <data key="d2">1</data>
+  <data key="d3">0</data>
+</edge>
+<edge source="5" target="2" id="050200">
+  <data key="d2">1</data>
+  <data key="d3">0</data>
+</edge>
+<edge source="5" target="4" id="050400">
+  <data key="d2">1</data>
+  <data key="d3">0</data>
+</edge>
+<edge source="6" target="4" id="060400">
+  <data key="d2">1</data>
+  <data key="d3">0</data>
+</edge>
+<edge source="7" target="1" id="070100">
+  <data key="d2">1</data>
+  <data key="d3">0</data>
+</edge>
+<edge source="7" target="6" id="070600">
+  <data key="d2">1</data>
+  <data key="d3">0</data>
+</edge>
+<edge source="8" target="3" id="080300">
+  <data key="d2">1</data>
+  <data key="d3">0</data>
+</edge>
+<edge source="9" target="8" id="090800">
+  <data key="d2">1</data>
+  <data key="d3">0</data>
+</edge>
+<edge source="10" target="7" id="100700">
+  <data key="d2">1</data>
+  <data key="d3">0</data>
+</edge>
+<edge source="10" target="9" id="100900">
+  <data key="d2">1</data>
+  <data key="d3">0</data>
+</edge>
+<edge source="11" target="8" id="110800">
+  <data key="d2">1</data>
+  <data key="d3">0</data>
+</edge>
+<edge source="11" target="10" id="111000">
+  <data key="d2">1</data>
+  <data key="d3">0</data>
+</edge>
+<edge source="12" target="5" id="120500">
+  <data key="d2">1</data>
+  <data key="d3">0</data>
+</edge>
+<edge source="12" target="11" id="121100">
+  <data key="d2">1</data>
+  <data key="d3">0</data>
+</edge>
+<edge source="13" target="5" id="130500">
+  <data key="d2">1</data>
+  <data key="d3">0</data>
+</edge>
+<edge source="13" target="10" id="131000">
+  <data key="d2">1</data>
+  <data key="d3">0</data>
+</edge>
+</graph></graphml>
