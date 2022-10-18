@@ -197,11 +197,12 @@ class ResultPresentation(object):
 
 
 if __name__ == '__main__':
-    TopologyPresentation().plot_topology('hexnet')
+    # TopologyPresentation().plot_topology('hexnet')
     solutions = (
-        # 'SASMA-LSMS', 'SASMA-LFEL', 'SASMA-EO'
-        'EO-(0.3,0.3,0.3)', 'EO-(0.5,0.5,0)', 'EO-(0.5,0,0.5)', 'EO-(0,0.5,0.5)', 'EO-(1,0,0)', 'EO-(0,0,1)'
+        'LFEL-LBMS', 'LFEL-LSMS', 'EO-LBMS', 'EO-LSMS'
+        # 'EO-(0.3,0.3,0.3)', 'EO-(0.5,0.5,0)', 'EO-(0.5,0,0.5)', 'EO-(0,0.5,0.5)', 'EO-(1,0,0)', 'EO-(0,0,1)'
         # 'ILP-LBMS', 'ILP-LSMS', 'SASMA-LFEL', 'SASMA-EO', 'SASMA-LSMS'
+        # 'EO-LSMS-(0,0.5,0.5)', 'EO-LSMS-(0,0,1)'
     )
     performance_metrics = ('mapping_rate', 'service_throughput',
                            'network_throughput', 'req_bandwidth',
@@ -219,9 +220,9 @@ if __name__ == '__main__':
     X = np.array([i + 1 for i in range(K)])
     all_data = np.zeros(shape=(len(solutions), K))
     for i, name in enumerate(solutions):
-        if not os.path.exists('../save_files/NSFNET-EO/{}.npy'.format(name)):
+        if not os.path.exists('../save_files/NSFNET-SASMA/{}.npy'.format(name)):
             continue
-        solution_data = np.load('../save_files/NSFNET-EO/{}.npy'.format(name))
+        solution_data = np.load('../save_files/NSFNET-SASMA/{}.npy'.format(name))
         all_data[i] = [np.mean(k, axis=0)[performance_metrics.index(metrics)] * 100 for k in solution_data]
     plt = ResultPresentation(solutions).plot_line_figure(
         X,
