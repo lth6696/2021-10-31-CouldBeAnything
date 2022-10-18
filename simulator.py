@@ -65,7 +65,7 @@ if __name__ == '__main__':
     Nmatrix = 25        # 流量矩阵数
     RepeatTimes = 50    # 重复实验次数
     Method = 'EO-LSMS'     # 共有多种求解方式 {'ILP-LBMS', 'ILP-LSMS', 'LFEL-LBMS', 'LFEL-LSMS', 'EO-LBMS', 'EO-LSMS'}
-    MetricWeights = (0, 0.5, 0.5)    # 指标有四种：1、跨越等级 2、占用带宽 3、抢占带宽比例
+    MetricWeights = (0, 0, 1)    # 指标有四种：1、跨越等级 2、占用带宽 3、抢占带宽比例
     TopoFile = "./graphml/nsfnet/nsfnet.graphml"
     SaveFile = 'result_matrix.npy'
 
