@@ -1,2 +1,2 @@
-from source.result import ResultPlot
-from source.result import ResultAnalysis
+from result import ResultPlot
+from result import ResultAnalysis

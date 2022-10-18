@@ -6,8 +6,8 @@ import pulp.pulp
 import networkx as nx
 from pulp import *
 
-from source.result.ResultAnalysis import Result
-from source.input.InputImp import Traffic
+from result.ResultAnalysis import Result
+from input.InputImp import Traffic
 
 
 class IntegerLinearProgram(object):
@@ -223,13 +223,15 @@ class HeuristicAlgorithm(object):
     def solve(self,
               graph: nx.MultiDiGraph,
               traffic_matrix: np.matrix,
-              weights: tuple
+              weights: tuple,
+              scheme: str
               ):
         """
         启发式算法求解器。
         :param graph: MultiDiGraph, 有向多边图
         :param traffic_matrix: np.matrix, 流量矩阵，目前数据结构为列表，后续更改为矩阵
         :param weights: tuple, 添加边缘时，多指标权重，权重总和为1
+        :param scheme: str, 分为LBMS和LSMS两类方案
         :return: 仿真结果
         """
         (page, row, col) = traffic_matrix.shape
@@ -243,7 +245,7 @@ class HeuristicAlgorithm(object):
                 for v in range(col):
                     if u == v:
                         continue
-                    if self._is_routed(traffic_matrix[k][u][v], graph, weights):
+                    if self._is_routed(traffic_matrix[k][u][v], graph, weights, scheme):
                         self.routed_traffic[k][u][v] = self.ROUTED
                         traffic_matrix[k][u][v].blocked = False
                     else:
@@ -259,14 +261,15 @@ class HeuristicAlgorithm(object):
     def _is_routed(self,
                    traffic: Traffic,
                    graph: nx.MultiDiGraph,
-                   weights: tuple
+                   weights: tuple,
+                   scheme: str
                    ):
         # 初始化单边有向图
         G = nx.DiGraph()
         G.add_nodes_from(graph.nodes)
 
         # 筛选并添加边缘
-        self._add_edges(G, graph, traffic.security, weights)
+        self._add_edges(G, graph, traffic.security, weights, scheme)
 
         try:
             # 最短路径计算
@@ -287,13 +290,15 @@ class HeuristicAlgorithm(object):
             G: nx.DiGraph,
             graph: nx.MultiDiGraph,
             req_security: int,
-            weights: tuple
+            weights: tuple,
+            scheme: str
     ):
         """
         本方法需要集成类覆写。
         :param G: nx.DiGraph, 单边有向图，算法内用于路径计算的图
         :param graph: nx.MultiDiGraph, 多边有向图，仿真拓扑图
         :param req_security: int, 请求安全等级
+        :param scheme: str, 分为LBMS和LSMS两个方案
         :return: bool, 布尔值
         """
         pass
@@ -340,7 +345,8 @@ class LayerFirstEdgeLast(HeuristicAlgorithm):
             G: nx.DiGraph,
             graph: nx.MultiDiGraph,
             req_security: int,
-            weights: tuple
+            weights: tuple,
+            scheme: str
     ):
         nodes = list(map(str, graph.nodes))
         for u in nodes:
@@ -353,8 +359,14 @@ class LayerFirstEdgeLast(HeuristicAlgorithm):
                 for t in graph[u][v]:
                     edge = graph[u][v][t]
                     # 若链路等级不满足需求或链路没有带宽，则跳过
-                    if edge['level'] > req_security or edge['bandwidth'] == 0:
-                        continue
+                    if scheme == 'LBMS':
+                        if edge['level'] > req_security or edge['bandwidth'] == 0:
+                            continue
+                    elif scheme == 'LSMS':
+                        if edge['level'] != req_security or edge['bandwidth'] == 0:
+                            continue
+                    else:
+                        logging.error("{} - {} - The scheme of '{}' does not recognize.".format(__file__, __name__, scheme))
                     # 找出等级最低的链路
                     if edge['level'] > lowest_level:
                         lowest_level = edge['level']
@@ -383,7 +395,8 @@ class EdgeOnly(HeuristicAlgorithm):
             G: nx.DiGraph,
             graph: nx.MultiDiGraph,
             req_security: int,
-            weights: tuple
+            weights: tuple,
+            scheme: str
     ):
         if len(weights) != len(self.MetricsName):
             raise ValueError('Wrong number of metric weights.')
@@ -394,9 +407,17 @@ class EdgeOnly(HeuristicAlgorithm):
                 if not graph.has_edge(u, v):
                     continue
                 # 找出(u, v)间所有链路
-                edges = collections.OrderedDict({t: graph[u][v][t]
-                                                 for t in graph[u][v]
-                                                 if graph[u][v][t]['level'] <= req_security})
+                if scheme == 'LBMS':
+                    edges = collections.OrderedDict({t: graph[u][v][t]
+                                                     for t in graph[u][v]
+                                                     if graph[u][v][t]['level'] <= req_security})
+                elif scheme == 'LSMS':
+                    edges = collections.OrderedDict({t: graph[u][v][t]
+                                                     for t in graph[u][v]
+                                                     if graph[u][v][t]['level'] == req_security})
+                else:
+                    edges = {}
+                    logging.error("{} - {} - The scheme of '{}' does not recognize.".format(__file__, __name__, scheme))
                 if not edges:
                     continue
                 # 初始化指标矩阵大小为 指标数*链路数
@@ -425,37 +446,3 @@ class EdgeOnly(HeuristicAlgorithm):
                     cost=1-edges[t]['bandwidth']/self.STANDARD_BANDWIDTH
                 )
                 # print(G[u][v]['cost'])
-
-
-class LevelStayMappingScheme(HeuristicAlgorithm):
-    def _add_edges(
-            self,
-            G: nx.DiGraph,
-            graph: nx.MultiDiGraph,
-            req_security: int,
-            weights: tuple
-    ):
-        nodes = list(map(str, graph.nodes))
-        for u in nodes:
-            for v in nodes:
-                # 判断节点对(u, v)间是否存在链路
-                if not graph.has_edge(u, v):
-                    continue
-                # 找出等级相同的链路
-                edges_with_same_level = {t: graph[u][v][t]
-                                         for t in graph[u][v]
-                                         if graph[u][v][t]['level'] == req_security}
-                # 若存在等级相同的链路，则选出带宽最大的链路
-                if edges_with_same_level:
-                    t = max(edges_with_same_level.keys(), key=lambda x: edges_with_same_level[x]['bandwidth'])
-                    edge = edges_with_same_level[t]
-                # 若不存在等级相同的链路，则跳过
-                else:
-                    continue
-                G.add_edge(
-                    u, v,
-                    index=t,
-                    level=edge['level'],
-                    bandwidth=edge['bandwidth'],
-                    cost=1 - edge['bandwidth'] / self.STANDARD_BANDWIDTH
-                )

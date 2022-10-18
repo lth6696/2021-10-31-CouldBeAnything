@@ -44,16 +44,13 @@ def simulate(nw: int, ntm: int, nl: int, method: str, topo_file: str, weights: t
         level_matrix = input_.get_level_matrix()
         bandwidth_matrix = input_.get_bandwidth_matrix()
         result = IntegerLinearProgram().run(input_.MultiDiG, adj_matrix, level_matrix, bandwidth_matrix, traffic_matrix, scheme)
+    elif solver == 'LFEL':
+        result = LayerFirstEdgeLast().solve(input_.MultiDiG, traffic_matrix, weights, scheme)
+    elif solver == 'EO':
+        result = EdgeOnly().solve(input_.MultiDiG, traffic_matrix, weights, scheme)
     else:
-        if scheme == 'LFEL':
-            result = LayerFirstEdgeLast().solve(input_.MultiDiG, traffic_matrix, weights)
-        elif scheme == 'EO':
-            result = EdgeOnly().solve(input_.MultiDiG, traffic_matrix, weights)
-        elif scheme == 'LSMS':
-            result = LevelStayMappingScheme().solve(input_.MultiDiG, traffic_matrix, weights)
-        else:
-            result = None
-            logging.error('{} - {} - Inputting wrong scheme {}.'.format(__file__, __name__, scheme))
+        result = None
+        logging.error('{} - {} - Inputting wrong scheme {}.'.format(__file__, __name__, scheme))
     end = time()
     logging.info('{} - {} - The solver runs {:.3f} seconds.'.format(__file__, __name__, end-start))
     return result
@@ -66,7 +63,7 @@ if __name__ == '__main__':
     Nwavelength = 4     # 波长数
     Nlevel = 3          # 安全等级数
     Nmatrix = 25        # 流量矩阵数
-    RepeatTimes = 30    # 重复实验次数
+    RepeatTimes = 50    # 重复实验次数
     Method = 'EO-LSMS'     # 共有多种求解方式 {'ILP-LBMS', 'ILP-LSMS', 'LFEL-LBMS', 'LFEL-LSMS', 'EO-LBMS', 'EO-LSMS'}
     MetricWeights = (0, 0.5, 0.5)    # 指标有四种：1、跨越等级 2、占用带宽 3、抢占带宽比例
     TopoFile = "./graphml/nsfnet/nsfnet.graphml"
