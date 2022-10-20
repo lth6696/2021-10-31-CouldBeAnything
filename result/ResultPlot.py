@@ -199,10 +199,10 @@ class ResultPresentation(object):
 if __name__ == '__main__':
     # TopologyPresentation().plot_topology('hexnet')
     solutions = (
-        'LFEL-LBMS', 'LFEL-LSMS', 'EO-LBMS', 'EO-LSMS'
-        # 'EO-(0.3,0.3,0.3)', 'EO-(0.5,0.5,0)', 'EO-(0.5,0,0.5)', 'EO-(0,0.5,0.5)', 'EO-(1,0,0)', 'EO-(0,0,1)'
-        # 'ILP-LBMS', 'ILP-LSMS', 'SASMA-LFEL', 'SASMA-EO', 'SASMA-LSMS'
+        'ILP-LBMS', 'ILP-LSMS', 'LFEL-LBMS', 'LFEL-LSMS', 'EO-LBMS', 'EO-LSMS'
+        # 'EO-LBMS-(0.3,0.3,0.3)', 'EO-LBMS-(0.5,0.5,0)', 'EO-LBMS-(0.5,0,0.5)', 'EO-LBMS-(0,0.5,0.5)', 'EO-LBMS-(1,0,0)', 'EO-LBMS-(0,0,1)',
         # 'EO-LSMS-(0,0.5,0.5)', 'EO-LSMS-(0,0,1)'
+        # 'LFEL-LBMS', 'LFEL-LSMS', 'EO-LBMS', 'EO-LSMS'
     )
     performance_metrics = ('mapping_rate', 'service_throughput',
                            'network_throughput', 'req_bandwidth',
@@ -213,21 +213,23 @@ if __name__ == '__main__':
     ILP_vs_SASMA_data = np.array([
         [98.8, 96.2, 93.1, 91.4],   # ILP-LBMS
         [94.3, 90.2, 85.8, 80.4],   # ILP-LSMS
-        [98.5, 94.8, 90.1, 86.0],   # SASMA-LFEL
-        [98.3, 95.1, 91.5, 87.7],   # SASMA-EO
-        [94.0, 87.0, 81.0, 75.9]    # SASMA-LSMS
+        [98.5, 94.8, 90.1, 86.0],   # LFEL-LBMS
+        [94.0, 87.0, 81.0, 75.9],   # LFEL-LSMS
+        [98.3, 95.1, 91.5, 87.7],   # EO-LBMS
+        [94.2, 87.4, 82.1, 76.0]    # EO-LSMS
     ])
     X = np.array([i + 1 for i in range(K)])
     all_data = np.zeros(shape=(len(solutions), K))
     for i, name in enumerate(solutions):
-        if not os.path.exists('../save_files/NSFNET-SASMA/{}.npy'.format(name)):
+        if not os.path.exists('../save_files/HEXNET-SASMA/{}.npy'.format(name)):
             continue
-        solution_data = np.load('../save_files/NSFNET-SASMA/{}.npy'.format(name))
+        solution_data = np.load('../save_files/HEXNET-SASMA/{}.npy'.format(name))
         all_data[i] = [np.mean(k, axis=0)[performance_metrics.index(metrics)] * 100 for k in solution_data]
     plt = ResultPresentation(solutions).plot_line_figure(
-        X,
-        # np.array([4, 8, 12, 16]),
-        all_data,
+        # X,
+        np.array([4, 8, 12, 16]),
+        # all_data[:, np.arange(3, 16, 4)],
+        ILP_vs_SASMA_data,
         'Number of traffic matrices',
         'Mapping Rate (%)',
         show=True

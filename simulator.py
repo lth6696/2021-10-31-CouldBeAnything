@@ -65,14 +65,15 @@ if __name__ == '__main__':
     Nmatrix = 25        # 流量矩阵数
     RepeatTimes = 50    # 重复实验次数
     Method = 'EO-LSMS'     # 共有多种求解方式 {'ILP-LBMS', 'ILP-LSMS', 'LFEL-LBMS', 'LFEL-LSMS', 'EO-LBMS', 'EO-LSMS'}
-    MetricWeights = (0, 0, 1)    # 指标有四种：1、跨越等级 2、占用带宽 3、抢占带宽比例
-    TopoFile = "./graphml/nsfnet/nsfnet.graphml"
+    MetricWeights = (0, 0.5, 0.5)    # 指标有四种：1、跨越等级 2、占用带宽 3、抢占带宽比例
+    TopoFile = "./graphml/hexnet/hexnet.graphml"
     SaveFile = 'result_matrix.npy'
 
     # 仿真
     metrics = ('mapping_rate', 'service_throughput', 'network_throughput', 'req_bandwidth', 'ave_hops', 'ave_link_utilization', 'ave_level_deviation')
     result_matrix = np.zeros(shape=(Nmatrix, RepeatTimes, len(metrics)))
-    for K in range(1, Nmatrix+1):
+    # for K in range(1, Nmatrix+1):
+    for K in [16]:
         logging.info('{} - {} - Simulation sets {} wavelengths, {}/{} levels and {}/{} matrices.'
                      .format(__file__, __name__,
                              Nwavelength,
