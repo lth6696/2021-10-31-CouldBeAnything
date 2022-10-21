@@ -79,13 +79,13 @@ class ResultFigure:
 
 
 if __name__ == '__main__':
-    results = np.load('result.npy', allow_pickle=True)
+    results = np.load('moea_psy_NSGA2.npy', allow_pickle=True)
     titles = results[0]
     data = np.array([rec[1] for rec in results[1:]])
     print(pd.DataFrame(data, columns=titles))
     rf = ResultFigure()
     rf.plot_line(
-        data[:, 9],
+        data[:, 0],
         [i+1 for i in range(data.shape[0])],
         xlabel='Number of traffic matrices',
         ylabel='Latency (s)',
