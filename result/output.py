@@ -149,3 +149,22 @@ class Result:
             for (u, v) in zip(self.routed_paths[key][:-1], self.routed_paths[key][1:]):
                 traffic = problem.traffic_matrices[k][col]
                 self.graph[str(u)][str(v)]['bandwidth'] -= traffic.req_bandwidth
+
+    def get_distribution(self, problem: pd.MyProblem):
+        # 本方法用于输出成功路由的业务的带宽分布、流量分布
+        self.get_best_phen()
+        self._get_paths(problem)
+        self._get_routed_traffic(self.paths, problem)
+        bandwidth_distribution_list = [[] for _ in ['Succeed', 'Failed']]
+        data_distribution_list = [[] for _ in ['Succeed', 'Failed']]
+        K = len(problem.traffic_matrices)
+        cols = len(problem.traffic_matrices[0])
+        succeed_traffic = {key[:2] for key in self.routed_paths}
+        failed_traffic = {(k, col) for k in range(K) for col in range(cols)} - succeed_traffic
+        for (k, col) in succeed_traffic:
+            bandwidth_distribution_list[0].append(problem.traffic_matrices[k][col].req_bandwidth)
+            data_distribution_list[0].append(problem.traffic_matrices[k][col].data)
+        for (k, col) in failed_traffic:
+            bandwidth_distribution_list[1].append(problem.traffic_matrices[k][col].req_bandwidth)
+            data_distribution_list[1].append(problem.traffic_matrices[k][col].data)
+        return bandwidth_distribution_list, data_distribution_list
