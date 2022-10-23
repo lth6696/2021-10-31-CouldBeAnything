@@ -42,7 +42,8 @@ class ResultFigure:
             fsize: tuple = (8.6, 6.2),
             ms: float = 2.0,
             lw: float = 0.5,
-            show: bool = True
+            show: bool = True,
+            label: list = None
     ):
         # 设置图片大小
         self.style(*fsize)
@@ -71,7 +72,7 @@ class ResultFigure:
         plt.ylabel(ylabel)
         plt.grid(True, ls=':', lw=lw, c='#d5d6d8')
         plt.tight_layout()
-        # plt.legend(self.solutions)
+        plt.legend(label)
 
         if show:
             plt.show()
@@ -79,15 +80,23 @@ class ResultFigure:
 
 
 if __name__ == '__main__':
-    results = np.load('moea_psy_NSGA2.npy', allow_pickle=True)
-    titles = results[0]
-    data = np.array([rec[1] for rec in results[1:]])
-    print(pd.DataFrame(data, columns=titles))
+    results_nsga = np.load('moea_psy_NSGA2.npy', allow_pickle=True)
+    results_cara = np.load('result.npy', allow_pickle=True)
+    titles = results_nsga[0]
+    data_nsga = np.array([rec[1] for rec in results_nsga[1:]])
+    data_cara = np.array([rec[1] for rec in results_cara[1:]])
     rf = ResultFigure()
+    """
+    'latency(s)',   'hop',              'routed services', 
+    'success rate', 'throughput',       'com_utl', 
+    'sto_utl',      'bandwidth_utl',    'cost'
+    """
+    index = 8
     rf.plot_line(
-        data[:, 0],
-        [i+1 for i in range(data.shape[0])],
+        np.array([data_nsga[:, 8], data_cara[:, 7]]),
+        [i+1 for i in range(data_nsga.shape[0])],
         xlabel='Number of traffic matrices',
-        ylabel='Latency (s)',
-        show=True
+        ylabel='Link Utilization (%)',
+        show=True,
+        label=['NSGA-II', 'Dijkstra']
     )

@@ -52,6 +52,10 @@ class Topology:
             var_name = 'bandwidth_{}_to_{}'.format(*sorted([G.nodes[u]['type'], G.nodes[v]['type']]))
             G[u][v]['bandwidth'] = int(getattr(self, var_name))
             G[u][v]['max_bandwidth'] = int(getattr(self, var_name))
+            G[u][v]['cost'] = 100 / G[u][v]['bandwidth']
+        for node in G.nodes:
+            G.nodes[node]['max_compute'] = G.nodes[node]['compute']
+            G.nodes[node]['max_storage'] = G.nodes[node]['storage']
         if draw:
             nx.draw(
                 G,

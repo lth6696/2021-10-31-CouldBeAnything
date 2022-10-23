@@ -2,7 +2,7 @@ import logging
 
 import numpy as np
 
-from solver import problem_defination as pd
+from solver import problem_defination as prod
 
 
 class Output:
@@ -23,148 +23,141 @@ class Output:
         self.cv_oversubscribe_bandwidth_edges = 0
 
 
-class Result:
+class Solution:
     """
-    该类用于保存算法输出的最优化方案
+    该类用于存储算法结果，包含NSGA和Heuristic算法。
     """
-    def __init__(self, graph, ObjV, chrom, phen, weight=None):
-        self.graph = graph
-        # 算法结果
-        self.optimal_ObjV = ObjV
-        self.optimal_chroms = chrom
-        self.optimal_phen = phen
-        self.weight = weight if weight else (0.4, 0.2, 0.2, 0.1, 0.1)
-        self.paths = None
-        self.routed_paths = None
-        # 最佳结果
-        self.best_ObjV = None
-        self.best_ObjV_index = None
-        self.best_phen = None
+    def __init__(self):
+        # 涉及性能分析的结果包括流量矩阵、拓扑、路由路径
+        self.traffic_matrix = None
+        self.graph = None
+        self.path = None
 
-        self.is_reserved = False
+    def init(self, **kwargs):
+        """
+        本方法用于启发式算法直接初始化
+        """
+        for key in kwargs:
+            if hasattr(self, key):
+                setattr(self, key, kwargs[key])
+            else:
+                raise ValueError('{} does not have the attribution of {}.'.format(__name__, key))
 
-    def _get_best_ObjV_index(self):
-        # 归一化
-        min_ = np.min(self.optimal_ObjV, axis=0)
-        max_ = np.max(self.optimal_ObjV, axis=0)
-        normalized_ObjV = (self.optimal_ObjV - min_) / (max_ - min_)
-        normalized_ObjV[~np.isfinite(normalized_ObjV)] = 0
-        normalized_ObjV[:, :2] = 1 - normalized_ObjV[:, :2]
-        # 根据权重选择最优解
-        vars = normalized_ObjV.dot(np.array(self.weight))
-        max_vars_index = np.where(vars == np.max(vars))
-        if len(max_vars_index) > 1:
-            logging.warning("{} - {} - There are {} best phens.".format(__file__, __name__, len(max_vars_index)))
-        self.best_ObjV_index = int(max_vars_index[0])
-        return self.best_ObjV_index
-
-    def _get_paths(self, problem):
-        if self.paths is not None:
-            return self.paths
-        # 变量长度为num_edges*num_traffic
-        chrom_index = 0
-        chrom_len = problem.num_edges
-        paths = {}
-        for k, tm in enumerate(problem.traffic_matrices):
+    def convert(self, objv, weight, phen, problem: prod.MyProblem):
+        """
+        本方法将遗传算法结果转换为通用结果
+        self.get_best_phen()
+        self._get_paths(problem)
+        self._get_routed_traffic(self.paths, problem)
+        """
+        if self.graph is None and self.traffic_matrix is None:
+            raise ValueError
+        # 获取最佳解变量
+        if len(objv) == 1:
+            best_solution = phen[0]
+        elif len(objv) > 1:
+            min_ = np.min(objv, axis=0)
+            max_ = np.max(objv, axis=0)
+            norm_ObjV = (objv - min_) / (max_ - min_)
+            norm_ObjV[np.isinf(norm_ObjV)] = 1
+            norm_ObjV[np.isnan(norm_ObjV)] = 0
+            norm_ObjV[:, :2] = 1 - norm_ObjV[:, :2]     # 前两列为最小化目标
+            best_objv_index = np.argmax(norm_ObjV.dot(np.array(weight)))       # 根据权重选择最优解
+            best_solution = phen[best_objv_index]
+        else:
+            return None
+        # 路径译码
+        chrom_len = len(self.graph.edges)
+        decode_paths = {}
+        for k, tm in enumerate(self.traffic_matrix):
             for col, traffic in enumerate(tm):
+                chrom_index = (k * len(tm)) + col
                 path = problem._des_priority_decode(traffic.src,
                                                     problem.datacenter_nodes,
-                                                    self.best_phen[chrom_index * chrom_len: (chrom_index + 1) * chrom_len].copy(),
+                                                    best_solution[chrom_index * chrom_len: (chrom_index + 1) * chrom_len].copy(),
                                                     problem.neighbors)
-                paths[(k, col, path[-1])] = path
-                chrom_index += 1
-        self.paths = paths
-        return self.paths
+                decode_paths[(k, col, path[-1])] = path
+        # 判断业务成功路由
+        self.path = problem._get_routed_traffic(decode_paths)
+        # 预留带宽
+        for key in self.path:
+            traffic = self.traffic_matrix[key[0]][key[1]]
+            for (u, v) in self.path[key]:
+                self.graph[u][v]['bandwidth'] -= traffic.req_bandwidth
+            self.graph.nodes[key[-1]]['compute'] -= traffic.req_compute
+            self.graph.nodes[key[-1]]['storage'] -= traffic.req_storage
+        return self.path
 
-    def _get_routed_traffic(self, paths: dict, problem: pd.MyProblem):
-        if self.routed_paths is None:
-            self.routed_paths = problem._get_routed_traffic(paths)
-        return self.routed_paths
 
-    def get_best_ObjV(self):
-        if not self.best_ObjV_index:
-            self._get_best_ObjV_index()
-        self.best_ObjV = self.optimal_ObjV[self.best_ObjV_index]
-        return self.best_ObjV
+class Performance:
+    """
+    获取各项性能指标
+    """
+    @staticmethod
+    def get_latency(solution: Solution, ips_per_gigabyte: int):
+        latency = []
+        for (k, col, dst) in solution.path:
+            traffic = solution.traffic_matrix[k][col]
+            trans_latency = traffic.data * 8 / traffic.req_bandwidth  # second
+            proce_latency = traffic.data * ips_per_gigabyte / traffic.req_compute   # second
+            latency.append(trans_latency+proce_latency)
+        return np.mean(latency)
 
-    def get_best_phen(self):
-        # 若尚未选出最佳解的索引
-        if not self.best_ObjV_index:
-            self._get_best_ObjV_index()
-        # 若尚未给出最佳解对应的变量
-        if self.best_phen is None:
-            self.best_phen = self.optimal_phen[self.best_ObjV_index]
-        return self.best_phen
+    @staticmethod
+    def get_hop(solution: Solution):
+        hop = []
+        for key in solution.path:
+            hop.append(len(solution.path[key]) - 1)
+        return np.mean(hop)
 
-    def get_ave_hops(self, problem: pd.MyProblem):
-        self.get_best_phen()
-        self._get_paths(problem)
-        self._get_routed_traffic(self.paths, problem)
-        ave_hop = np.average([len(self.routed_paths[index])-1 for index in self.routed_paths])
-        return ave_hop
+    @staticmethod
+    def get_success_rate(solution: Solution):
+        K = len(solution.traffic_matrix)
+        cols = len(solution.traffic_matrix[0])
+        success_services = len(solution.path)
+        total_services = K * cols
+        return success_services / total_services * 100
 
-    def get_throughput(self, problem: pd.MyProblem):
-        self.get_best_phen()
-        self._get_paths(problem)
-        self._get_routed_traffic(self.paths, problem)
-        throughput = [problem.traffic_matrices[k][col].req_bandwidth for (k, col, dst) in self.routed_paths]
-        return np.sum(throughput)
+    @staticmethod
+    def get_throughput(solution: Solution):
+        throughput = 0
+        for (k, col, dst) in solution.path:
+            traffic = solution.traffic_matrix[k][col]
+            throughput += traffic.req_bandwidth
+        return throughput
 
-    def get_ave_bandwidth_req(self, problem: pd.MyProblem):
-        self.get_best_phen()
-        self._get_paths(problem)
-        self._get_routed_traffic(self.paths, problem)
-        ave_bandwidth_req = [problem.traffic_matrices[k][col].req_bandwidth for (k, col, dst) in self.routed_paths]
-        return np.average(ave_bandwidth_req)
-
-    def get_ave_compute_req(self, problem: pd.MyProblem):
-        self.get_best_phen()
-        self._get_paths(problem)
-        self._get_routed_traffic(self.paths, problem)
-        ave_compute_req = [problem.traffic_matrices[k][col].req_compute for (k, col, dst) in self.routed_paths]
-        return np.average(ave_compute_req)
-
-    def get_ave_storage_req(self, problem: pd.MyProblem):
-        self.get_best_phen()
-        self._get_paths(problem)
-        self._get_routed_traffic(self.paths, problem)
-        ave_storage_req = [problem.traffic_matrices[k][col].req_storage for (k, col, dst) in self.routed_paths]
-        return np.average(ave_storage_req)
-
-    def get_link_utilization(self, problem: pd.MyProblem):
-        self.get_best_phen()
-        self._get_paths(problem)
-        self._get_routed_traffic(self.paths, problem)
+    @staticmethod
+    def get_link_utilization(solution: Solution):
         link_utilization = []
-        for (u, v) in self.graph.edges:
-            link_utilization.append(1-self.graph[u][v]['bandwidth']/self.graph[u][v]['max_bandwidth'])
-        return np.mean(link_utilization)
+        for (u, v) in solution.graph.edges:
+            link_utilization.append(1 - solution.graph[u][v]['bandwidth'] / solution.graph[u][v]['max_bandwidth'])
+        return np.mean(link_utilization) * 100
 
-    def reserve_bandwdith(self, problem):
-        self.get_best_phen()
-        self._get_paths(problem)
-        self._get_routed_traffic(self.paths, problem)
-        for key in self.routed_paths:
-            (k, col, dst) = key
-            for (u, v) in zip(self.routed_paths[key][:-1], self.routed_paths[key][1:]):
-                traffic = problem.traffic_matrices[k][col]
-                self.graph[str(u)][str(v)]['bandwidth'] -= traffic.req_bandwidth
+    @staticmethod
+    def get_storage_utilization(solution: Solution):
+        storage_utilization = []
+        for node in solution.graph.nodes:
+            if solution.graph.nodes[node]['type'] == 'datacenter':
+                storage_utilization.append(1 - solution.graph.nodes[node]['storage'] / solution.graph.nodes[node]['max_storage'])
+        return np.mean(storage_utilization) * 100
 
-    def get_distribution(self, problem: pd.MyProblem):
-        # 本方法用于输出成功路由的业务的带宽分布、流量分布
-        self.get_best_phen()
-        self._get_paths(problem)
-        self._get_routed_traffic(self.paths, problem)
-        bandwidth_distribution_list = [[] for _ in ['Succeed', 'Failed']]
-        data_distribution_list = [[] for _ in ['Succeed', 'Failed']]
-        K = len(problem.traffic_matrices)
-        cols = len(problem.traffic_matrices[0])
-        succeed_traffic = {key[:2] for key in self.routed_paths}
-        failed_traffic = {(k, col) for k in range(K) for col in range(cols)} - succeed_traffic
-        for (k, col) in succeed_traffic:
-            bandwidth_distribution_list[0].append(problem.traffic_matrices[k][col].req_bandwidth)
-            data_distribution_list[0].append(problem.traffic_matrices[k][col].data)
-        for (k, col) in failed_traffic:
-            bandwidth_distribution_list[1].append(problem.traffic_matrices[k][col].req_bandwidth)
-            data_distribution_list[1].append(problem.traffic_matrices[k][col].data)
-        return bandwidth_distribution_list, data_distribution_list
+    @staticmethod
+    def get_compute_utilization(solution: Solution):
+        compute_utilization = []
+        for node in solution.graph.nodes:
+            if solution.graph.nodes[node]['type'] == 'datacenter':
+                compute_utilization.append(1 - solution.graph.nodes[node]['compute'] / solution.graph.nodes[node]['max_compute'])
+        return np.mean(compute_utilization) * 100
+
+    @staticmethod
+    def get_cost(solution: Solution):
+        cost = []
+        for (k, col, dst) in solution.path:
+            traffic = solution.traffic_matrix[k][col]
+            cost.append(np.sum([traffic.req_compute * solution.graph.nodes[str(dst)]['cost_compute'],
+                                traffic.req_storage * solution.graph.nodes[str(dst)]['cost_storage']]))
+        return np.mean(cost)
+
+    @staticmethod
+    def get_routed_service(solution: Solution):
+        return len(solution.path)
