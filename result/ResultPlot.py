@@ -199,17 +199,18 @@ class ResultPresentation(object):
 if __name__ == '__main__':
     # TopologyPresentation().plot_topology('hexnet')
     solutions = (
-        'ILP-LBMS', 'ILP-LSMS', 'LFEL-LBMS', 'LFEL-LSMS', 'EO-LBMS', 'EO-LSMS'
+        # 'ILP-LBMS', 'ILP-LSMS', 'LFEL-LBMS', 'LFEL-LSMS', 'EO-LBMS', 'EO-LSMS'
         # 'EO-LBMS-(0.3,0.3,0.3)', 'EO-LBMS-(0.5,0.5,0)', 'EO-LBMS-(0.5,0,0.5)', 'EO-LBMS-(0,0.5,0.5)', 'EO-LBMS-(1,0,0)', 'EO-LBMS-(0,0,1)',
         # 'EO-LSMS-(0,0.5,0.5)', 'EO-LSMS-(0,0,1)'
-        # 'LFEL-LBMS', 'LFEL-LSMS', 'EO-LBMS', 'EO-LSMS'
+        'LFEL-LBMS', 'LFEL-LSMS', 'EO-LBMS', 'EO-LSMS'
     )
     performance_metrics = ('mapping_rate', 'service_throughput',
                            'network_throughput', 'req_bandwidth',
                            'ave_hops', 'ave_link_utilization',
                            'ave_level_deviation')
     K = 25
-    metrics = 'mapping_rate'
+    metrics = 'ave_level_deviation'
+    file = '../save_files/NSFNET-SASMA'
     ILP_vs_SASMA_data = np.array([
         [98.8, 96.2, 93.1, 91.4],   # ILP-LBMS
         [94.3, 90.2, 85.8, 80.4],   # ILP-LSMS
@@ -221,18 +222,19 @@ if __name__ == '__main__':
     X = np.array([i + 1 for i in range(K)])
     all_data = np.zeros(shape=(len(solutions), K))
     for i, name in enumerate(solutions):
-        if not os.path.exists('../save_files/HEXNET-SASMA/{}.npy'.format(name)):
+        if not os.path.exists(file+'/{}.npy'.format(name)):
             continue
-        solution_data = np.load('../save_files/HEXNET-SASMA/{}.npy'.format(name))
-        all_data[i] = [np.mean(k, axis=0)[performance_metrics.index(metrics)] * 100 for k in solution_data]
+        solution_data = np.load(file+'/{}.npy'.format(name))
+        all_data[i] = [np.mean(k, axis=0)[performance_metrics.index(metrics)] for k in solution_data]
     plt = ResultPresentation(solutions).plot_line_figure(
-        # X,
-        np.array([4, 8, 12, 16]),
+        X,
+        all_data,
+        # np.array([4, 8, 12, 16]),
         # all_data[:, np.arange(3, 16, 4)],
-        ILP_vs_SASMA_data,
+        # ILP_vs_SASMA_data,
         'Number of traffic matrices',
         'Mapping Rate (%)',
-        show=True
+        show=False
     )
     # plt.axvline(x=18, ymax=0.69, ls='--', lw=0.5, color='black')
     # plt.axhline(y=100, xmax=0.69, ls='--', lw=0.5, color='black')
@@ -246,7 +248,12 @@ if __name__ == '__main__':
     pandas.set_option('display.width', 1000)
     a = np.max(all_data, axis=1)
     b = np.min(all_data, axis=1)
-    # c = np.mean(all_data[:, np.arange(0, 5)], axis=1)
-    d = np.mean(all_data[:, np.arange(0, 17)], axis=1)
-    e = np.mean(all_data[:, np.arange(17, 24)], axis=1)
-    print(pandas.DataFrame([solutions, a, b, d, e]))
+    c = np.mean(all_data, axis=1)
+    d = np.mean(all_data[:, np.arange(0, 5)], axis=1)
+    e = np.mean(all_data[:, np.arange(5, 18)], axis=1)
+    f = np.mean(all_data[:, np.arange(18, 24)], axis=1)
+    g = np.mean(all_data[:, 0]-all_data[:, 1])
+    print(pandas.DataFrame([a, b, c, d, e, f],
+                           columns=solutions,
+                           index=['max', 'min', 'average', 'low', 'medium', 'high']))
+    # print(f)
