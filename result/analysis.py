@@ -80,7 +80,7 @@ class ResultFigure:
 
 
 if __name__ == '__main__':
-    results_nsga = np.load('moea_psy_NSGA2.npy', allow_pickle=True)
+    results_nsga = np.load('moea_psy_NSGA2_.npy', allow_pickle=True)
     results_cara = np.load('cara.npy', allow_pickle=True)
     titles = results_nsga[0]
     data_nsga = np.array([rec[1] for rec in results_nsga[1:]])
@@ -95,13 +95,13 @@ if __name__ == '__main__':
         [267.31084623, 209.57156449, 169.7536106,  155.47256394, 136.4919122],  # nsga
         [328.40368889, 221.09437341, 173.04075263, 166.36455624, 165.65425288]  # cara
     ]
-    index = 5
+    index = 7
     rf.plot_line(
-        np.array([data_nsga[:, index], data_cara[:, index]]),
+        np.array([data_nsga[:, index+1], data_cara[:, index]]),
         # np.array(cost_compare),
         [i+1 for i in range(data_nsga.shape[0])],
         xlabel='Number of traffic matrices',
-        ylabel='Storage Resource Utilization (%)',
+        ylabel='Link Utilization (%)',
         show=True,
         label=['NSGA-II', 'Dijkstra']
     )
