@@ -21,7 +21,7 @@ if __name__ == '__main__':
     # 仿真
     data = [['latency(s)', 'hop', 'routed services', 'success rate', 'throughput',
              'com_utl', 'sto_utl', 'bandwidth_utl', 'cost']]
-    for K in [1, 2, 3, 4, 5]:
+    for K in [3]:
         result_matrix = np.empty(shape=(len(data[0]), repeat_times))
         for i in range(repeat_times):
             logging.info("It's running the {}th matrices in the {}th times.".format(K, i))

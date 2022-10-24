@@ -82,10 +82,10 @@ class Solution:
         # 预留带宽
         for key in self.path:
             traffic = self.traffic_matrix[key[0]][key[1]]
-            for (u, v) in self.path[key]:
-                self.graph[u][v]['bandwidth'] -= traffic.req_bandwidth
-            self.graph.nodes[key[-1]]['compute'] -= traffic.req_compute
-            self.graph.nodes[key[-1]]['storage'] -= traffic.req_storage
+            for (u, v) in zip(self.path[key][:-1], self.path[key][1:]):
+                self.graph[str(u)][str(v)]['bandwidth'] -= traffic.req_bandwidth
+            self.graph.nodes[str(key[-1])]['compute'] -= traffic.req_compute
+            self.graph.nodes[str(key[-1])]['storage'] -= traffic.req_storage
         return self.path
 
 
