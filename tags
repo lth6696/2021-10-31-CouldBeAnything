@@ -1,0 +1,48 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.8	//
+CITY_COVERAGE_FILE	simulation.py	/^CITY_COVERAGE_FILE = '.\/data\/city_coverage_0.txt'$/;"	v
+CITY_LOC	utils.py	/^CITY_LOC = SAT_DB["cityloc"]$/;"	v
+CITY_LOCATION_FILE	simulation.py	/^CITY_LOCATION_FILE = '.\/data\/cities.txt'$/;"	v
+CONN_REC	utils.py	/^CONN_REC = SAT_DB["connrec"]$/;"	v
+Constellation	constellation.py	/^class Constellation():$/;"	c
+Constellation	simulation.py	/^from constellation import Constellation$/;"	i
+DB_CLIENT	utils.py	/^DB_CLIENT = pymongo.MongoClient(host='localhost', port=27017)$/;"	v
+EARTH_RADIUS	utils.py	/^EARTH_RADIUS = 6371  # Kms$/;"	v
+SAT_DB	utils.py	/^SAT_DB = DB_CLIENT["satnet"]$/;"	v
+SAT_LOC	utils.py	/^SAT_LOC = SAT_DB["satloc"]$/;"	v
+SAT_LOCATION_FILE	simulation.py	/^SAT_LOCATION_FILE = '.\/data\/sat_positions_0.txt'$/;"	v
+__init__	constellation.py	/^    def __init__(self):$/;"	m	class:Constellation
+add_city_item_to_db	utils.py	/^def add_city_item_to_db(city_location):$/;"	f
+add_city_to_graph	constellation.py	/^    def add_city_to_graph(self, city_pos_file):$/;"	m	class:Constellation
+add_conn_rec_to_db	utils.py	/^def add_conn_rec_to_db(conn_rec):$/;"	f
+add_isl_to_graph	constellation.py	/^    def add_isl_to_graph(self):$/;"	m	class:Constellation
+add_isl_with_attr	constellation.py	/^    def add_isl_with_attr(self, src_orb_id, src_sat_id, dst_orb_id, dst_sat_id):$/;"	m	class:Constellation
+add_sat_item_to_db	utils.py	/^def add_sat_item_to_db(sat_location):$/;"	f
+add_sat_to_graph	constellation.py	/^    def add_sat_to_graph(self, sat_pos_file):$/;"	m	class:Constellation
+add_up_down_links_to_graph	constellation.py	/^        def add_up_down_links_to_graph(self, coverage_file):$/;"	f	function:Constellation.add_isl_to_graph
+check_edge_availability	utils.py	/^def check_edge_availability(graph, node1, node2):$/;"	f
+clear_all_dbs	utils.py	/^def clear_all_dbs():$/;"	f
+clear_city_db	utils.py	/^def clear_city_db():$/;"	f
+clear_conn_rec_db	utils.py	/^def clear_conn_rec_db():$/;"	f
+clear_sat_db	utils.py	/^def clear_sat_db():$/;"	f
+compute_isl_length	utils.py	/^def compute_isl_length(sat1, sat2, sat_positions):$/;"	f
+connection_provision	constellation.py	/^        def connection_provision(self, src_sat_uid, dst_sat_uid, bandwidth):$/;"	f	function:Constellation.add_isl_to_graph
+get_neighbor_satellite	utils.py	/^def get_neighbor_satellite(sat1_orb, sat1_rel_id, sat2_orb, sat2_rel_id, sat_positions, num_orbits, num_sats_per_orbit):$/;"	f
+get_sat_item_from_db_by_orbit_sat_id	utils.py	/^def get_sat_item_from_db_by_orbit_sat_id(orb_id, orb_sat_id):$/;"	f
+main	simulation.py	/^def main():$/;"	f
+math	constellation.py	/^import math$/;"	i
+math	utils.py	/^import math$/;"	i
+nx	constellation.py	/^import networkx as nx$/;"	i
+pymongo	utils.py	/^import pymongo$/;"	i
+read_city_coverage	utils.py	/^def read_city_coverage(coverage_file):$/;"	f
+read_city_pair_file	utils.py	/^def read_city_pair_file(city_pair_file):$/;"	f
+read_city_positions	utils.py	/^def read_city_positions(city_pos_file):$/;"	f
+read_sat_positions	utils.py	/^def read_sat_positions(sat_pos_file):$/;"	f
+read_valid_isls	utils.py	/^def read_valid_isls(valid_isl_file):$/;"	f
+remove_coverage_for_city	utils.py	/^def remove_coverage_for_city(graph, city, city_coverage):$/;"	f
+utils	constellation.py	/^import utils$/;"	i
+utils	simulation.py	/^import utils$/;"	i
