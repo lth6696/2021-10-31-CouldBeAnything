@@ -16,7 +16,7 @@ class IntegerLinearProgram(object):
 
     def run(self, MultiDiG, adj_matrix, level_matrix, bandwidth_matrix, traffic_matrix, scheme):
         prob = LpProblem("ServiceMapping", LpMaximize)
-        # print(listSolvers(onlyAvailable=True))
+        print(listSolvers(onlyAvailable=True))
 
         row, col = len(adj_matrix), len(adj_matrix)
         nodes = [i for i in range(row)]
@@ -147,7 +147,7 @@ class IntegerLinearProgram(object):
                                     )
 
         # The problem is solved using PuLP's choice of Solver
-        prob.solve(CPLEX_CMD(msg=False, timelimit=100))
+        prob.solve(CPLEX_PY(msg=False, timeLimit=100))
 
         result = self._result_converter(Lamda,
                                         S,

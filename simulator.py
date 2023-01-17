@@ -61,19 +61,19 @@ if __name__ == '__main__':
 
     # 初始化参数
     Nwavelength = 4     # 波长数
-    Nlevel = 3          # 安全等级数
-    Nmatrix = 25        # 流量矩阵数
+    Nlevel = 4          # 安全等级数
+    Nmatrix = 6        # 流量矩阵数
     RepeatTimes = 50    # 重复实验次数
-    Method = 'EO-LSMS'     # 共有多种求解方式 {'ILP-LBMS', 'ILP-LSMS', 'LFEL-LBMS', 'LFEL-LSMS', 'EO-LBMS', 'EO-LSMS'}
+    Method = 'ILP-LBMS'     # 共有多种求解方式 {'ILP-LBMS', 'ILP-LSMS', 'LFEL-LBMS', 'LFEL-LSMS', 'EO-LBMS', 'EO-LSMS'}
     MetricWeights = (0, 0.5, 0.5)    # 指标有四种：1、跨越等级 2、占用带宽 3、抢占带宽比例
-    TopoFile = "./graphml/hexnet/hexnet.graphml"
+    TopoFile = "./graphml/nsfnet/nsfnet.graphml"
     SaveFile = 'result_matrix.npy'
 
     # 仿真
     metrics = ('mapping_rate', 'service_throughput', 'network_throughput', 'req_bandwidth', 'ave_hops', 'ave_link_utilization', 'ave_level_deviation')
-    result_matrix = np.zeros(shape=(Nmatrix, RepeatTimes, len(metrics)))
+    result_matrix = np.zeros(shape=(Nlevel, RepeatTimes, len(metrics)))
     # for K in range(1, Nmatrix+1):
-    for K in [16]:
+    for L in range(1, Nlevel+1):
         logging.info('{} - {} - Simulation sets {} wavelengths, {}/{} levels and {}/{} matrices.'
                      .format(__file__, __name__,
                              Nwavelength,
@@ -87,14 +87,17 @@ if __name__ == '__main__':
                               method=Method,
                               topo_file=TopoFile,
                               weights=MetricWeights)
-            result_matrix[K-1][i] = [result.mapping_rate,
+            result_matrix[L-1][i] = [result.mapping_rate,
                                      result.service_throughput,
                                      result.network_throughput,
                                      result.req_bandwidth,
                                      result.ave_hops,
                                      result.ave_link_utilization,
                                      result.ave_level_deviation]
-        print('{}K={}{}'.format('-'*60, K, '-'*60))
-        print(pd.DataFrame([metrics, np.mean(result_matrix[K-1], axis=0)]))
+        print('{}K={}, L={}{}'.format('-'*60,
+                                      K if 'K' in dir() else Nmatrix,
+                                      L if 'L' in dir() else Nlevel,
+                                      '-'*60))
+        print(pd.DataFrame([metrics, np.mean(result_matrix[L-1], axis=0)]))
     # 保存结果矩阵
-    np.save(SaveFile, result_matrix)
+    # np.save(SaveFile, result_matrix)

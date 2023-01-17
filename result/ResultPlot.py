@@ -91,7 +91,8 @@ class ResultPresentation(object):
                 ls=self.line_styles[0], lw=lw,  # set line
             )
 
-        plt.yticks(rotation='vertical')
+        plt.yticks([0.1*i for i in range(0, 4)], rotation='vertical')
+        plt.xticks([i*4*6 for i in range(1, 5)])
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
         plt.grid(True, ls=':', lw=lw, c='#d5d6d8')
@@ -167,7 +168,7 @@ class ResultPresentation(object):
         # plt.axvline(x=6, ymax=0.69, ls='--', lw=0.5, color='black')
         plt.yticks(rotation='vertical')
         plt.ylabel(ylabel[0])
-        plt.xticks([i * 5 for i in range(6)])
+        plt.xticks([i*30 for i in range(0, 6)])
         plt.yticks([i * 4 for i in range(5)])
         plt.grid(True, ls=':', lw=lw, c='#d5d6d8')
         plt.tight_layout()
@@ -176,17 +177,17 @@ class ResultPresentation(object):
         ax_derivation = plt.subplot(grid[2, 0])
         derivation = np.zeros(shape=shape)
         for i, record in enumerate(data):
-            dfunc = np.poly1d(np.polyfit(X, record, deg=5)).deriv()
-            derivation[i] = dfunc(X)
+            dfunc = np.poly1d(np.polyfit(X/6, record, deg=5)).deriv()
+            derivation[i] = dfunc(X/6)
             plt.plot(
                 X, derivation[i],
                 marker=self.markers[i % len(self.markers)], ms=ms,  # set marker
                 ls=self.line_styles[i % len(self.line_styles)], lw=lw,  # set line
                 color=self.map_vir(i / shape[0])  # set color
             )
-        plt.axvline(x=6, ymax=0.34, ls='--', lw=0.5, color='black')
+        plt.axvline(x=36, ymax=0.34, ls='--', lw=0.5, color='black')
         plt.axhline(y=1, xmax=0.235, ls='--', lw=0.5, color='black')
-        plt.xticks([i * 5 for i in range(6)])
+        plt.xticks([i*30 for i in range(0, 6)])
         plt.yticks([i for i in range(4)])
         plt.yticks(rotation='vertical')
         plt.xlabel(xlabel)
@@ -199,10 +200,11 @@ class ResultPresentation(object):
 if __name__ == '__main__':
     # TopologyPresentation().plot_topology('hexnet')
     solutions = (
-        # 'ILP-LBMS', 'ILP-LSMS', 'LFEL-LBMS', 'LFEL-LSMS', 'EO-LBMS', 'EO-LSMS'
+        'ILP-LBMS', 'ILP-LSMS', 'LFEL-LBMS', 'LFEL-LSMS', 'EO-LBMS', 'EO-LSMS'
         # 'EO-LBMS-(0.3,0.3,0.3)', 'EO-LBMS-(0.5,0.5,0)', 'EO-LBMS-(0.5,0,0.5)', 'EO-LBMS-(0,0.5,0.5)', 'EO-LBMS-(1,0,0)', 'EO-LBMS-(0,0,1)',
         # 'EO-LSMS-(0,0.5,0.5)', 'EO-LSMS-(0,0,1)'
-        'LFEL-LBMS', 'LFEL-LSMS', 'EO-LBMS', 'EO-LSMS'
+        # 'LFEL-LBMS', 'LFEL-LSMS', 'EO-LBMS', 'EO-LSMS'
+        # 'ILP-LBMS', 'ILP-LSMS'
     )
     performance_metrics = ('mapping_rate', 'service_throughput',
                            'network_throughput', 'req_bandwidth',
@@ -219,7 +221,7 @@ if __name__ == '__main__':
         [98.3, 95.1, 91.5, 87.7],   # EO-LBMS
         [94.2, 87.4, 82.1, 76.0]    # EO-LSMS
     ])
-    X = np.array([i + 1 for i in range(K)])
+    X = np.array([i + 1 for i in range(K)]) * 6
     all_data = np.zeros(shape=(len(solutions), K))
     for i, name in enumerate(solutions):
         if not os.path.exists(file+'/{}.npy'.format(name)):
@@ -227,33 +229,31 @@ if __name__ == '__main__':
         solution_data = np.load(file+'/{}.npy'.format(name))
         all_data[i] = [np.mean(k, axis=0)[performance_metrics.index(metrics)] for k in solution_data]
     plt = ResultPresentation(solutions).plot_line_figure(
-        X,
-        all_data,
-        # np.array([4, 8, 12, 16]),
+        # X,
+        # all_data,
+        np.array([4, 8, 12, 16])*6,
         # all_data[:, np.arange(3, 16, 4)],
-        # ILP_vs_SASMA_data,
-        'Number of traffic matrices',
-        'Mapping Rate (%)',
-        show=False
+        ILP_vs_SASMA_data,
+        'Traffic Load (Gb/s)',
+        'Level Deviation',
+        show=True
     )
-    # plt.axvline(x=18, ymax=0.69, ls='--', lw=0.5, color='black')
-    # plt.axhline(y=100, xmax=0.69, ls='--', lw=0.5, color='black')
-    # plt.show()
+
     # ResultPresentation(solutions).get_derivation(
     #     X, all_data,
-    #     xlabel='Number of traffic matrices',
+    #     xlabel='Traffic Load (Gb/s)',
     #     ylabel=['Throughput (Tb/s)', 'Growth Rate']
     # )
-    pandas.set_option('display.max_columns', 100)
-    pandas.set_option('display.width', 1000)
-    a = np.max(all_data, axis=1)
-    b = np.min(all_data, axis=1)
-    c = np.mean(all_data, axis=1)
-    d = np.mean(all_data[:, np.arange(0, 5)], axis=1)
-    e = np.mean(all_data[:, np.arange(5, 18)], axis=1)
-    f = np.mean(all_data[:, np.arange(18, 24)], axis=1)
-    g = np.mean(all_data[:, 0]-all_data[:, 1])
-    print(pandas.DataFrame([a, b, c, d, e, f],
-                           columns=solutions,
-                           index=['max', 'min', 'average', 'low', 'medium', 'high']))
+    # pandas.set_option('display.max_columns', 100)
+    # pandas.set_option('display.width', 1000)
+    # a = np.max(all_data, axis=1)
+    # b = np.min(all_data, axis=1)
+    # c = np.mean(all_data, axis=1)
+    # d = np.mean(all_data[:, np.arange(0, 5)], axis=1)
+    # e = np.mean(all_data[:, np.arange(5, 18)], axis=1)
+    # f = np.mean(all_data[:, np.arange(18, 24)], axis=1)
+    # g = np.mean(all_data[:, 0]-all_data[:, 1])
+    # print(pandas.DataFrame([a, b, c, d, e, f],
+    #                        columns=solutions,
+    #                        index=['max', 'min', 'average', 'low', 'medium', 'high']))
     # print(f)
